@@ -36,16 +36,43 @@ CDP 포트는 인터넷에 직접 공개하지 않는 구성을 권장합니다.
 ## 3. 안전한 초기화
 
 ```bash
-git clone https://github.com/greeminghome/hermes_office.git
-cd hermes_office
-PUBLIC_ORIGIN=https://office.example.com ./deploy/scripts/install.sh --init-only
+git clone https://github.com/your-org/hermes-office.git
+cd hermes-office
+PUBLIC_ORIGIN=https://office.example.com \
+HERMES_OFFICE_USER=admin \
+HERMES_OFFICE_PASSWORD='use-a-password-manager-value' \
+./deploy/scripts/install.sh --init-only
 ```
 
 생성되는 `.env`와 `deploy/secrets/`는 Git에서 제외됩니다. 설치 스크립트는 현재
 Linux 사용자의 UID/GID를 저장하고, 48-byte 세션 비밀키와 32-byte Agent 읽기
 토큰을 새로 생성하며, Office 비밀번호는 scrypt 해시만 저장합니다.
 
-## 4. Hermes Agent 연결
+로그인 ID와 제품명은 설치별로 변경할 수 있습니다. 아래 값은 첫 이미지 빌드 전에
+설정해야 로그인 화면, 앱 헤더, 브라우저 제목과 PWA manifest에 함께 반영됩니다.
+
+```dotenv
+HERMES_OFFICE_USER=admin
+OFFICE_BRAND_NAME=Hermes Office
+OFFICE_BRAND_SHORT_NAME=Hermes
+OFFICE_BRAND_DESCRIPTION=Self-hosted AI team workspace
+```
+
+비밀번호 평문은 `.env`에 저장하지 않습니다. 최초 설치 시
+`HERMES_OFFICE_PASSWORD` 환경값 또는 대화형 입력으로 받아 scrypt 해시만 기록합니다.
+
+## 4. 기본 에이전트 프로필
+
+범용 기본값은 역할 기반 ID를 사용합니다.
+
+- `hermes-director`
+- `hermes-operations`, `hermes-brand`, `hermes-growth`, `hermes-content`
+- `hermes-creative`, `hermes-customer`, `hermes-finance`, `hermes-technology`
+
+Hermes Agent에서 다른 ID를 사용하는 경우 허용 목록과 프로필별 CDP 매핑을 실제
+ID로 교체합니다. UI는 API에서 받은 추가 프로필도 일반 에이전트로 표시합니다.
+
+## 5. Hermes Agent 연결
 
 Agent가 호스트 포트 `9119`를 게시한다면 기본값을 사용합니다.
 
@@ -71,7 +98,7 @@ HERMES_TARGET=http://hermes-agent:9119
 HERMES_AUTH_MODE=legacy-server-token
 ```
 
-## 5. Live Screen 연결
+## 6. Live Screen 연결
 
 Live Screen을 쓰지 않으면 CDP 설정을 비워 둡니다. 쓸 경우 외부 공개 URL이 아닌
 Docker 내부 endpoint를 사용합니다.
@@ -84,7 +111,7 @@ LIVE_SCREEN_PROFILE_CDP_URLS=profile-a=http://hermes-agent:9400,profile-b=http:/
 모든 프로필은 독립 browser context와 고정 session ID를 가져야 합니다. 프로필
 저장소 또는 쿠키 디렉터리를 수령자에게 복사하지 말고 각 서비스에서 다시 로그인합니다.
 
-## 6. HTTPS와 Traefik
+## 7. HTTPS와 Traefik
 
 기존 프록시가 호스트의 `127.0.0.1:4173`으로 전달한다면 추가 설정이 필요 없습니다.
 Traefik Docker provider를 쓸 때는 다음 값을 설정합니다.
@@ -102,7 +129,7 @@ PUBLIC_ORIGIN_HOST=office.example.com
 docker network inspect traefik
 ```
 
-## 7. 계정 연결
+## 8. 계정 연결
 
 Office를 시작하고 로그인한 뒤 새 소유자 계정으로 다음 순서를 따릅니다.
 
@@ -122,7 +149,7 @@ Google Drive용 비밀파일을 직접 공급하는 경우 `deploy/secrets/`에 
 `0600`으로 설정합니다. 예약 Google OAuth 토큰은 Office UI가
 `office-reservations` 볼륨 안에 생성합니다.
 
-## 8. 예약 동기화 활성화
+## 9. 예약 동기화 활성화
 
 `deploy/secrets/reservation_sources.json`에는 수령자 소유 iCal URL만 입력합니다.
 
@@ -155,7 +182,7 @@ RESERVATION_SPACECLOUD_WRITE_ENABLED=false
 네이버 writer는 실제 네이버 예약을 만들거나 취소하지 않고 가용 일정만 관리하도록
 설계되어 있습니다. 테스트를 위해 실제 예약 생성·취소를 반복하지 마세요.
 
-## 9. 진단, 백업, 업데이트
+## 10. 진단, 백업, 업데이트
 
 ```bash
 ./deploy/scripts/doctor.sh --strict-agent
@@ -176,7 +203,7 @@ RESERVATION_SPACECLOUD_WRITE_ENABLED=false
 OAuth와 iCal 비밀파일까지 되돌릴 때만 `--restore-secrets`를 추가합니다. 백업의
 `config.env`는 체크섬 검증만 하고 자동 적용하지 않습니다.
 
-## 10. 완료 판정
+## 11. 완료 판정
 
 설치 완료는 단순히 첫 화면이 뜨는 상태가 아닙니다. 다음이 모두 충족되어야 합니다.
 

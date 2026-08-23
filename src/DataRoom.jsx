@@ -607,7 +607,7 @@ export default function DataRoom({ onStartChat, onStartMeeting }) {
       source: "data-room",
       topic: `자료 검토: ${activeDetail.name}`,
       subtitle: activeDetail.relativePath,
-      participants: ["default", "greeming-junseo", "greeming-seoyun"],
+      participants: ["default", "hermes-finance", "hermes-operations"],
       requestedBy: "default",
       dataItem: {
         id: activeDetail.id,

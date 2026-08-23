@@ -114,7 +114,7 @@ test("relay prioritizes input acknowledgements over visual frames", () => {
 });
 
 test("input on the isolated control channel immediately releases the paired video channel", () => {
-  const grant = { pageId: "page-1", profile: "greeming-seoyun", sessionId: "chat-1" };
+  const grant = { pageId: "page-1", profile: "hermes-operations", sessionId: "chat-1" };
   const videoClient = new MockSocket();
   const videoUpstream = new MockSocket();
   const controlClient = new MockSocket();

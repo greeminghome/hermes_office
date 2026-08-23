@@ -21,10 +21,11 @@ export function temporaryBookingFingerprint({ sourcePlatform, startAt, endAt, pr
 }
 
 export function projectionUid({ targetPlatform, originPlatform, externalBookingId, venueId }) {
-  return `greeming:block:${targetPlatform}:${originPlatform}:${sha256(externalBookingId).slice(0, 20)}:${venueId}`;
+  return `hermes-office:block:${targetPlatform}:${originPlatform}:${sha256(externalBookingId).slice(0, 20)}:${venueId}`;
 }
 
 export function googleEventId(bookingKey) {
+  // This opaque prefix is intentionally stable to avoid duplicating existing managed events.
   return `grm${sha256(bookingKey).slice(0, 40)}`;
 }
 

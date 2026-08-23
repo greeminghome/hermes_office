@@ -19,17 +19,18 @@ import {
   OFFICE_USER_HOME,
 } from "./officeNavigation.js";
 import { useModalFocus } from "./useModalFocus.js";
+import { OFFICE_BRAND_NAME } from "./branding.js";
 
 const AGENT_ACTIVITY = {
   default: "전체 미션 우선순위 조정",
-  "greeming-seoyun": "운영 일정 점검",
-  "greeming-jian": "브랜드 문구 검토",
-  "greeming-taeo": "캠페인 전략 설계",
-  "greeming-harin": "콘텐츠 카피 작성",
-  "greeming-doyun": "산출물 품질 확인",
-  "greeming-yuna": "고객 문의 분류",
-  "greeming-junseo": "KPI 업데이트",
-  "greeming-jaehyun": "Hermes 연결 감시",
+  "hermes-operations": "운영 일정 점검",
+  "hermes-brand": "브랜드 문구 검토",
+  "hermes-growth": "캠페인 전략 설계",
+  "hermes-content": "콘텐츠 카피 작성",
+  "hermes-creative": "산출물 품질 확인",
+  "hermes-customer": "고객 문의 분류",
+  "hermes-finance": "KPI 업데이트",
+  "hermes-technology": "Hermes 연결 감시",
 };
 
 function MobileOfficeHome({
@@ -60,7 +61,7 @@ function MobileOfficeHome({
         <h2>지금 필요한 일을 바로 시작하세요</h2>
         <p>모바일에서는 맵을 보는 것보다 대화, 회의, 승인, 업무 확인이 먼저입니다.</p>
         <div>
-          <button type="button" onClick={() => onOpenChatDock("default")}>민준 화면 보며 채팅</button>
+          <button type="button" onClick={() => onOpenChatDock("default")}>총괄 에이전트 화면 보며 채팅</button>
           <button type="button" onClick={onOpenMeeting}>회의 시작</button>
         </div>
       </div>
@@ -316,7 +317,7 @@ function MeetingRoom({ profiles, onClose, onStartMeeting }) {
   const [selected, setSelected] = useState(() => new Set(
     participants
       .map((profile) => profile.name)
-      .filter((name) => name === "default" || name === "greeming-seoyun"),
+      .filter((name) => name === "default" || name === "hermes-operations"),
   ));
   const [topic, setTopic] = useState("이번 주 핵심 업무와 병목 점검");
   const dialogRef = useModalFocus(true, onClose);
@@ -349,7 +350,7 @@ function MeetingRoom({ profiles, onClose, onStartMeeting }) {
             <input value={topic} onChange={(event) => setTopic(event.target.value)} />
           </div>
           <div className={`meeting-desk ${usesExpandedLayout ? "expanded" : ""}`}>
-            <strong>GREEMING</strong>
+            <strong>{OFFICE_BRAND_NAME}</strong>
             {participants.map((profile, index) => {
               const meta = resolveProfileMeta(profile);
               return (
@@ -391,14 +392,14 @@ const OFFICE_MEETING_SPEED = 12.4;
 const OFFICE_USER_SPEED = 16.5;
 const OFFICE_AGENT_SPRITE_ROWS = {
   default: 0,
-  "greeming-seoyun": 1,
-  "greeming-jian": 2,
-  "greeming-taeo": 3,
-  "greeming-harin": 4,
-  "greeming-doyun": 5,
-  "greeming-yuna": 6,
-  "greeming-junseo": 7,
-  "greeming-jaehyun": 8,
+  "hermes-operations": 1,
+  "hermes-brand": 2,
+  "hermes-growth": 3,
+  "hermes-content": 4,
+  "hermes-creative": 5,
+  "hermes-customer": 6,
+  "hermes-finance": 7,
+  "hermes-technology": 8,
 };
 
 // Foreground furniture is redrawn after the people layer so characters pass
@@ -1491,7 +1492,7 @@ export default function HermesOffice({
       <div className="rpg-hud">
         <div className="rpg-office-title">
           <img src="/hermes-mark.svg" alt="" />
-          <div><span>GREEMING HOME STUDIO</span><strong>Hermes AI Office</strong></div>
+          <div><span>{OFFICE_BRAND_NAME.toUpperCase()}</span><strong>Hermes AI Office</strong></div>
         </div>
         <div className="hud-signals">
           <span className="connected"><i /> Hermes Connected</span>

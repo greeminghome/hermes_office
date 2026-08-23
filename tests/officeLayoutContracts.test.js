@@ -20,7 +20,7 @@ import {
 } from "../src/officeNavigation.js";
 
 const roster = (count) => Array.from({ length: count }, (_, index) => ({
-  name: index === 0 ? "default" : index === 1 ? "greeming-seoyun" : `external-agent-${String(index).padStart(2, "0")}`,
+  name: index === 0 ? "default" : index === 1 ? "hermes-operations" : `external-agent-${String(index).padStart(2, "0")}`,
   description: `Dynamic role ${index}`,
   gateway_running: index % 2 === 0,
 }));
@@ -92,16 +92,16 @@ test("unregistered profiles receive their own readable fallback metadata", () =>
   assert.equal(meta.role, "Growth experiments");
   assert.equal(meta.initials, "EG");
   assert.match(meta.color, /^hsl\(\d+ 30% 48%\)$/);
-  assert.notEqual(meta.name, "민준");
+  assert.notEqual(meta.name, "총괄 에이전트");
 });
 
-test("Minjun's runtime alias uses the registered identity and one office seat", () => {
-  const meta = resolveProfileMeta({ name: "greeming-minjun", description: "runtime" });
+test("the primary runtime alias uses the registered identity and one office seat", () => {
+  const meta = resolveProfileMeta({ name: "hermes-director", description: "runtime" });
   assert.equal(meta.id, "default");
-  assert.equal(meta.name, "민준");
+  assert.equal(meta.name, "총괄 에이전트");
   const placements = buildOfficeAgentPlacements([
     { name: "default", gateway_running: false },
-    { name: "greeming-minjun", gateway_running: true },
+    { name: "hermes-director", gateway_running: true },
   ]);
   assert.deepEqual(Object.keys(placements), ["default"]);
 });
@@ -109,11 +109,11 @@ test("Minjun's runtime alias uses the registered identity and one office seat", 
 test("known profile room hints remain valid while unknown profiles get a real seat", () => {
   const placements = buildOfficeAgentPlacements([
     { name: "default" },
-    { name: "greeming-seoyun" },
+    { name: "hermes-operations" },
     { name: "outside-contractor" },
   ]);
   assert.equal(placements.default.roomId, "executive");
-  assert.equal(placements["greeming-seoyun"].roomId, "operations");
+  assert.equal(placements["hermes-operations"].roomId, "operations");
   assert.ok(placements["outside-contractor"].roomId);
   assert.notDeepEqual(placements["outside-contractor"], { roomId: "meeting", x: 50, y: 50 });
 });
@@ -121,10 +121,10 @@ test("known profile room hints remain valid while unknown profiles get a real se
 test("organization room assignment overrides legacy hints and stays inside the selected room", () => {
   const assignments = {
     default: "tech",
-    "greeming-seoyun": "creative",
+    "hermes-operations": "creative",
   };
   const placements = buildOfficeAgentPlacements(
-    [{ name: "default" }, { name: "greeming-seoyun" }],
+    [{ name: "default" }, { name: "hermes-operations" }],
     OFFICE_FLOOR_ZONES,
     ROOMS,
     assignments,
@@ -162,8 +162,8 @@ test("office map renders the approved lossless art and pixel people in one layer
   assert.match(source, /dataset\.motionFps/);
   assert.match(source, /dataset\.motionModel = "frame-independent"/);
   assert.doesNotMatch(source, /className="floorplan-art"/);
-  assert.doesNotMatch(source, /hermes-office-daylight-glass-v3\.webp|greeming-office-map-2d\.webp/);
-  assert.doesNotMatch(index, /greeming-office-map-2d\.webp/);
+  assert.doesNotMatch(source, /hermes-office-daylight-glass-v3\.webp|hermes-office-map-2d\.webp/);
+  assert.doesNotMatch(index, /hermes-office-map-2d\.webp/);
   assert.equal(mapAsset.readUInt32BE(16), 1536);
   assert.equal(mapAsset.readUInt32BE(20), 1024);
   assert.ok(mapAsset.length > 2_600_000, "the approved lossless map asset should not be replaced by a low-quality export");

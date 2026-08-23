@@ -38,14 +38,14 @@ function profileId(profile) {
 function defaultMetadata(id) {
   const presets = {
     default: { parentId: null, department: "leadership", roomId: "executive", order: 0 },
-    "greeming-seoyun": { parentId: "default", department: "operations", roomId: "operations", order: 0 },
-    "greeming-jaehyun": { parentId: "default", department: "technology", roomId: "tech", order: 1 },
-    "greeming-jian": { parentId: "greeming-seoyun", department: "brand", roomId: "brand", order: 0 },
-    "greeming-taeo": { parentId: "greeming-seoyun", department: "growth", roomId: "content", order: 1 },
-    "greeming-yuna": { parentId: "greeming-seoyun", department: "customer", roomId: "customer", order: 2 },
-    "greeming-junseo": { parentId: "greeming-seoyun", department: "finance", roomId: "finance", order: 3 },
-    "greeming-doyun": { parentId: "greeming-jian", department: "creative", roomId: "creative", order: 0 },
-    "greeming-harin": { parentId: "greeming-taeo", department: "content", roomId: "content", order: 0 },
+    "hermes-operations": { parentId: "default", department: "operations", roomId: "operations", order: 0 },
+    "hermes-technology": { parentId: "default", department: "technology", roomId: "tech", order: 1 },
+    "hermes-brand": { parentId: "hermes-operations", department: "brand", roomId: "brand", order: 0 },
+    "hermes-growth": { parentId: "hermes-operations", department: "growth", roomId: "content", order: 1 },
+    "hermes-customer": { parentId: "hermes-operations", department: "customer", roomId: "customer", order: 2 },
+    "hermes-finance": { parentId: "hermes-operations", department: "finance", roomId: "finance", order: 3 },
+    "hermes-creative": { parentId: "hermes-brand", department: "creative", roomId: "creative", order: 0 },
+    "hermes-content": { parentId: "hermes-growth", department: "content", roomId: "content", order: 0 },
   };
   return presets[id] ?? { parentId: "default", department: "general", roomId: "operations", order: 99 };
 }

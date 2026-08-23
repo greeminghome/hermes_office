@@ -2,9 +2,9 @@
 
 The runtime atlas is generated from the three alpha source sheets:
 
-- `team-a`: Minjun, Seoyun, Jian
-- `team-b`: Taeo, Harin, Doyun
-- `team-c`: Yuna, Junseo, Jaehyun
+- `team-a`: Director, Operations, Brand
+- `team-b`: Growth, Content, Creative
+- `team-c`: Customer, Finance, Technology
 
 Run `python scripts/build_pixel_agent_atlas.py` from the project root after
 changing a source sheet.

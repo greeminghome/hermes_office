@@ -173,7 +173,7 @@ test("admin connect and account delete preserve the scoped contract", async (t) 
   const gatewayPort = await listen(gateway);
   t.after(() => close(gateway));
 
-  const connectBody = Buffer.from(JSON.stringify({ profile_id: "greeming-harin", redirect_path: "/?view=plugins" }));
+  const connectBody = Buffer.from(JSON.stringify({ profile_id: "hermes-content", redirect_path: "/?view=plugins" }));
   const connect = await request({
     port: gatewayPort,
     method: "POST",
@@ -184,14 +184,14 @@ test("admin connect and account delete preserve the scoped contract", async (t) 
   const disconnect = await request({
     port: gatewayPort,
     method: "DELETE",
-    path: "/bridge/instagram/accounts/1784%2Fencoded?profile_id=greeming-harin",
+    path: "/bridge/instagram/accounts/1784%2Fencoded?profile_id=hermes-content",
   });
 
   assert.equal(connect.status, 200);
   assert.equal(disconnect.status, 200);
   assert.deepEqual(observed.map(({ method, url }) => ({ method, url })), [
     { method: "POST", url: "/admin/connect" },
-    { method: "DELETE", url: "/admin/accounts/1784%2Fencoded?profile_id=greeming-harin" },
+    { method: "DELETE", url: "/admin/accounts/1784%2Fencoded?profile_id=hermes-content" },
   ]);
   assert.equal(observed[0].body, connectBody.toString("utf8"));
   assert.equal(observed[0].headers.authorization, "Bearer scoped-admin-token");

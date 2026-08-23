@@ -1,12 +1,25 @@
-export const MINJUN_UI_PROFILE_ID = "default";
-export const MINJUN_HERMES_PROFILE_ID = "greeming-minjun";
+export const PRIMARY_UI_PROFILE_ID = "default";
+export const PRIMARY_HERMES_PROFILE_ID = "hermes-director";
+
+export const DEFAULT_TEAM_PROFILE_IDS = [
+  PRIMARY_UI_PROFILE_ID,
+  PRIMARY_HERMES_PROFILE_ID,
+  "hermes-operations",
+  "hermes-brand",
+  "hermes-growth",
+  "hermes-content",
+  "hermes-creative",
+  "hermes-customer",
+  "hermes-finance",
+  "hermes-technology",
+];
 
 export function toUiProfileId(profile) {
-  return profile === MINJUN_HERMES_PROFILE_ID ? MINJUN_UI_PROFILE_ID : profile;
+  return profile === PRIMARY_HERMES_PROFILE_ID ? PRIMARY_UI_PROFILE_ID : profile;
 }
 
 export function toHermesProfileId(profile) {
-  return profile === MINJUN_UI_PROFILE_ID ? MINJUN_HERMES_PROFILE_ID : profile;
+  return profile === PRIMARY_UI_PROFILE_ID ? PRIMARY_HERMES_PROFILE_ID : profile;
 }
 
 export function normalizeUiProfiles(profiles = []) {

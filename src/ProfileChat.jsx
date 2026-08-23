@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HermesGateway } from "./gateway.js";
 import { LiveScreenModal, LiveScreenPanel } from "./LiveScreen.jsx";
 import {
@@ -25,11 +25,11 @@ import { hitlResponseRequest, isHitlRequestExpired, normalizeHitlRequest, sessio
 import { useModalFocus } from "./useModalFocus.js";
 
 const PROFILE_ORDER = Object.keys(TEAM_META);
-const STORAGE_KEY = "greeming-hermes-chat-selection";
-const READ_STATE_KEY = "greeming-hermes-chat-read-state";
-const HIDDEN_SESSIONS_KEY = "greeming-hermes-hidden-chat-sessions";
-const HIDDEN_SESSIONS_MIGRATED_KEY = "greeming-hermes-hidden-chat-sessions-migrated";
-const LOCAL_REPORTS_KEY = "greeming-hermes-local-reports";
+const STORAGE_KEY = "hermes-office-chat-selection";
+const READ_STATE_KEY = "hermes-office-chat-read-state";
+const HIDDEN_SESSIONS_KEY = "hermes-office-hidden-chat-sessions";
+const HIDDEN_SESSIONS_MIGRATED_KEY = "hermes-office-hidden-chat-sessions-migrated";
+const LOCAL_REPORTS_KEY = "hermes-office-local-reports";
 
 function emptyThread() {
   return {
@@ -380,13 +380,13 @@ function inferCollaborationProfiles(text = "", owner = "default") {
   if (matches.length) return [...new Set(matches)];
 
   const roleHints = [
-    [/design|ui|ux|screen|brand|copy|content|image|proposal|landing|디자인|화면|브랜드|문구|카피|콘텐츠|이미지|제안/i, ["greeming-seoyun", "greeming-jian"]],
-    [/dev|code|deploy|bug|server|api|automation|개발|구현|코드|배포|버그|서버|자동화/i, ["greeming-jaehyun"]],
-    [/data|kpi|analysis|sales|settlement|cost|budget|finance|데이터|분석|매출|정산|비용|예산|재무/i, ["greeming-junseo"]],
-    [/customer|cs|voc|review|support|고객|문의|응대|리뷰/i, ["greeming-yuna"]],
-    [/sns|campaign|shooting|video|marketing|콘텐츠|캠페인|촬영|영상|마케팅/i, ["greeming-taeo", "greeming-harin"]],
+    [/design|ui|ux|screen|brand|copy|content|image|proposal|landing|디자인|화면|브랜드|문구|카피|콘텐츠|이미지|제안/i, ["hermes-operations", "hermes-brand"]],
+    [/dev|code|deploy|bug|server|api|automation|개발|구현|코드|배포|버그|서버|자동화/i, ["hermes-technology"]],
+    [/data|kpi|analysis|sales|settlement|cost|budget|finance|데이터|분석|매출|정산|비용|예산|재무/i, ["hermes-finance"]],
+    [/customer|cs|voc|review|support|고객|문의|응대|리뷰/i, ["hermes-customer"]],
+    [/sns|campaign|shooting|video|marketing|콘텐츠|캠페인|촬영|영상|마케팅/i, ["hermes-growth", "hermes-content"]],
   ];
-  const hinted = roleHints.find(([pattern]) => pattern.test(text))?.[1] ?? ["greeming-seoyun"];
+  const hinted = roleHints.find(([pattern]) => pattern.test(text))?.[1] ?? ["hermes-operations"];
   return hinted.filter((profileName) => profileName !== owner && TEAM_META[profileName]);
 }
 

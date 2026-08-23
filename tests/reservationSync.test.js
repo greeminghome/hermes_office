@@ -26,14 +26,14 @@ async function ledgerFixture(t) {
     ledger.close();
     await rm(root, { recursive: true, force: true });
   });
-  ledger.configureVenue({ id: "greeming-home", name: "그리밍홈", resourceId: "main", timeZone: "Asia/Seoul" });
+  ledger.configureVenue({ id: "demo-venue", name: "테스트 공간", resourceId: "main", timeZone: "Asia/Seoul" });
   return ledger;
 }
 
 function booking(overrides = {}) {
   return {
     sourcePlatform: "hourplace",
-    venueId: "greeming-home",
+    venueId: "demo-venue",
     resourceId: "main",
     externalBookingId: "HP-12345678",
     status: "confirmed",
@@ -151,15 +151,15 @@ test("card-payment operations block only confirmed bookings and expose authentic
     RESERVATION_BUFFER_BEFORE_MINUTES: "0",
     RESERVATION_BUFFER_AFTER_MINUTES: "0",
     RESERVATION_GMAIL_INGEST_ENABLED: "true",
-    RESERVATION_GMAIL_TOPIC: "projects/greeminghome/topics/hermes-gmail-reservations",
+    RESERVATION_GMAIL_TOPIC: "projects/example-project/topics/hermes-gmail-reservations",
     RESERVATION_GMAIL_PUSH_AUDIENCE: "https://office.test/webhooks/google/gmail",
-    RESERVATION_GMAIL_PUSH_SERVICE_ACCOUNT: "hermes-gmail-push@greeminghome.iam.gserviceaccount.com",
+    RESERVATION_GMAIL_PUSH_SERVICE_ACCOUNT: "hermes-gmail-push@example-project.iam.gserviceaccount.com",
   };
   const config = reservationSyncConfig(env);
   assert.equal(config.pendingBlocks, false);
   assert.equal(config.bufferBeforeMinutes, 0);
   assert.equal(config.bufferAfterMinutes, 0);
-  assert.equal(config.gmailTopic, "projects/greeminghome/topics/hermes-gmail-reservations");
+  assert.equal(config.gmailTopic, "projects/example-project/topics/hermes-gmail-reservations");
 
   const status = createReservationSyncController({ env }).status();
   assert.equal(status.gmailPush, "enabled");
@@ -200,7 +200,7 @@ test("booking identifiers and Google event IDs are deterministic and opaque", ()
   assert.equal(first.bookingKey, second.bookingKey);
   assert.equal(first.payloadHash, second.payloadHash);
   assert.match(googleEventId(first.bookingKey), /^grm[a-f0-9]{40}$/);
-  assert.equal(projectionUid({ targetPlatform: "naver", originPlatform: "hourplace", externalBookingId: "secret", venueId: "greeming-home" })
+  assert.equal(projectionUid({ targetPlatform: "naver", originPlatform: "hourplace", externalBookingId: "secret", venueId: "demo-venue" })
     .includes("secret"), false);
   assert.equal(maskSensitiveText("010-1234-5678 test@example.com 123456789"), "•••-••••-•••• •••@••• •••••6789");
 });
@@ -223,7 +223,7 @@ test("iCal parser unfolds events, converts Seoul time to UTC, and quarantines re
     "END:VEVENT",
     "END:VCALENDAR",
     "",
-  ].join("\r\n"), { sourcePlatform: "spacecloud", venueId: "greeming-home", resourceId: "main" });
+  ].join("\r\n"), { sourcePlatform: "spacecloud", venueId: "demo-venue", resourceId: "main" });
   assert.equal(parsed.events.length, 1);
   assert.equal(parsed.unknown.length, 1);
   assert.equal(parsed.events[0].startAt, "2026-08-20T05:00:00.000Z");
@@ -233,7 +233,7 @@ test("iCal parser unfolds events, converts Seoul time to UTC, and quarantines re
     "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", "UID:rotated-space-uid",
     "DTSTART;TZID=Asia/Seoul:20260820T140000", "DTEND;TZID=Asia/Seoul:20260820T160000",
     "END:VEVENT", "END:VCALENDAR", "",
-  ].join("\r\n"), { sourcePlatform: "spacecloud", venueId: "greeming-home", resourceId: "main" });
+  ].join("\r\n"), { sourcePlatform: "spacecloud", venueId: "demo-venue", resourceId: "main" });
   assert.equal(rotatedUid.events[0].externalBookingId, parsed.events[0].externalBookingId);
   assert.notEqual(rotatedUid.events[0].sourceMessageId, parsed.events[0].sourceMessageId);
 });
@@ -243,7 +243,7 @@ test("ledger is idempotent, revisions only on change, and jobs survive reopen", 
   const databasePath = path.join(root, "ledger.sqlite");
   const backupRoot = path.join(root, "backups");
   const firstLedger = new ReservationLedger({ databasePath, backupRoot });
-  firstLedger.configureVenue({ id: "greeming-home", name: "그리밍홈", resourceId: "main", timeZone: "Asia/Seoul" });
+  firstLedger.configureVenue({ id: "demo-venue", name: "테스트 공간", resourceId: "main", timeZone: "Asia/Seoul" });
   const first = firstLedger.ingestBooking(booking(), { sourceMessageId: "m-1" });
   const duplicate = firstLedger.ingestBooking(booking(), { sourceMessageId: "m-1" });
   const changed = firstLedger.ingestBooking(booking({ endAt: "2099-08-20T08:00:00.000Z" }), { sourceMessageId: "m-2" });
@@ -626,7 +626,7 @@ test("deterministic email parser accepts a complete fixture and quarantines new 
       ],
       body: { data: encode("예약번호: SC-123456 이용일시: 2026.08.20 14:00 ~ 16:00 결제 완료") },
     },
-  }, { venueId: "greeming-home", resourceId: "main" });
+  }, { venueId: "demo-venue", resourceId: "main" });
   assert.equal(complete.state, "parsed");
   assert.equal(complete.booking.startAt, "2026-08-20T05:00:00.000Z");
   const naver = parseReservationEmail({
@@ -639,7 +639,7 @@ test("deterministic email parser accepts a complete fixture and quarantines new 
       ],
       body: { data: encode("발송일시 2026.08.18 21:54 예약번호 NV-123456 이용일시 2026.08.20 오후 2:00 ~ 오후 4:00") },
     },
-  }, { venueId: "greeming-home", resourceId: "main" });
+  }, { venueId: "demo-venue", resourceId: "main" });
   assert.equal(naver.state, "parsed");
   assert.equal(naver.booking.status, "pending");
   assert.equal(naver.booking.startAt, "2026-08-20T05:00:00.000Z");
@@ -653,11 +653,11 @@ test("deterministic email parser accepts a complete fixture and quarantines new 
       ],
       body: { data: encode("2026-08-20 14:00 ~ 16:00") },
     },
-  }, { venueId: "greeming-home", resourceId: "main" });
+  }, { venueId: "demo-venue", resourceId: "main" });
   assert.equal(withoutId.state, "parsed");
   assert.match(withoutId.booking.externalBookingId, /^tmp_/);
   const unknown = parseReservationEmail({ id: "gmail-2", payload: { headers: [], body: { data: encode("new template") } } },
-    { venueId: "greeming-home" });
+    { venueId: "demo-venue" });
   assert.equal(unknown.state, "unknown");
 });
 

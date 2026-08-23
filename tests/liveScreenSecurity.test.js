@@ -11,7 +11,7 @@ import {
 test("Live Screen tickets are session-bound, one-use, expiring and revocable", () => {
   let now = 1000;
   const store = new LiveScreenTicketStore({ ttlMs: 1000, now: () => now });
-  const scope = { binding: "office-session-a", profile: "greeming-seoyun", sessionId: "chat-1", pageId: "page-1" };
+  const scope = { binding: "office-session-a", profile: "hermes-operations", sessionId: "chat-1", pageId: "page-1" };
   const first = store.issue(scope);
   assert.equal(store.consume(first.token, "office-session-b"), null);
   assert.equal(store.consume(first.token, "office-session-a"), null, "wrong binding still burns the ticket");
@@ -38,13 +38,13 @@ test("Live Screen Origin and scope checks fail closed", () => {
   assert.equal(liveScreenOriginMatches({ headers: { origin: "https://office.example.com.evil", host: canonical.host } }, canonical), false);
   assert.equal(liveScreenOriginMatches({ headers: { origin: "https://office.local", host: "office.local" } }), true);
 
-  const allowedProfiles = new Set(["greeming-seoyun"]);
+  const allowedProfiles = new Set(["hermes-operations"]);
   assert.deepEqual(validateLiveScreenScope({
-    profile: "greeming-seoyun", sessionId: "chat-1", targetId: "page.1", browserSessionId: "browser:1", allowedProfiles,
-  }), { profile: "greeming-seoyun", sessionId: "chat-1", targetId: "page.1", browserSessionId: "browser:1" });
+    profile: "hermes-operations", sessionId: "chat-1", targetId: "page.1", browserSessionId: "browser:1", allowedProfiles,
+  }), { profile: "hermes-operations", sessionId: "chat-1", targetId: "page.1", browserSessionId: "browser:1" });
   assert.throws(() => validateLiveScreenScope({ profile: "default", sessionId: "chat-1", allowedProfiles }));
-  assert.throws(() => validateLiveScreenScope({ profile: "greeming-seoyun", sessionId: "../chat", allowedProfiles }));
-  assert.throws(() => validateLiveScreenScope({ profile: "greeming-seoyun", sessionId: "chat", browserSessionId: "x".repeat(257), allowedProfiles }));
+  assert.throws(() => validateLiveScreenScope({ profile: "hermes-operations", sessionId: "../chat", allowedProfiles }));
+  assert.throws(() => validateLiveScreenScope({ profile: "hermes-operations", sessionId: "chat", browserSessionId: "x".repeat(257), allowedProfiles }));
 });
 
 test("Live Screen metadata removes credentials and sensitive query values", () => {

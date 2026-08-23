@@ -10,11 +10,11 @@ import {
 
 test("profile-mapped Live Screen routes fail closed instead of falling back across profiles", () => {
   const mapped = parseLiveScreenProfileMap([
-    "greeming-harin=http://hermes-agent:9401",
+    "hermes-content=http://hermes-agent:9401",
     "default=http://hermes-agent:9223",
   ].join(","));
 
-  assert.deepEqual(liveScreenEndpointCandidates("greeming-harin", mapped, ["http://fallback:9223"]), ["http://hermes-agent:9401"]);
+  assert.deepEqual(liveScreenEndpointCandidates("hermes-content", mapped, ["http://fallback:9223"]), ["http://hermes-agent:9401"]);
   assert.deepEqual(liveScreenEndpointCandidates("unmapped", mapped, ["http://fallback:9223"]), []);
   assert.deepEqual(liveScreenEndpointCandidates("default", mapped, ["http://fallback:9223"]), ["http://hermes-agent:9223"]);
 });
@@ -26,12 +26,12 @@ test("CDP URLs are normalized and unsupported schemes are rejected", () => {
 
 test("current-tab fallback remains inside one isolated profile endpoint", () => {
   const mapped = parseLiveScreenProfileMap([
-    "greeming-seoyun=http://hermes-agent:9405",
-    "greeming-harin=http://hermes-agent:9401",
+    "hermes-operations=http://hermes-agent:9405",
+    "hermes-content=http://hermes-agent:9401",
   ].join(","));
 
-  assert.equal(liveScreenFallbackEndpoint("greeming-seoyun", mapped, ["http://fallback:9223"]), "http://hermes-agent:9405");
-  assert.equal(liveScreenFallbackEndpoint("greeming-harin", mapped, ["http://fallback:9223"]), "http://hermes-agent:9401");
+  assert.equal(liveScreenFallbackEndpoint("hermes-operations", mapped, ["http://fallback:9223"]), "http://hermes-agent:9405");
+  assert.equal(liveScreenFallbackEndpoint("hermes-content", mapped, ["http://fallback:9223"]), "http://hermes-agent:9401");
   assert.equal(liveScreenFallbackEndpoint("unmapped", mapped, ["http://fallback:9223"]), "");
 });
 

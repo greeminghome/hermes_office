@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CommandCenter from "./CommandCenter.jsx";
 import DataRoom from "./DataRoom.jsx";
 import HermesOffice from "./HermesOffice.jsx";
@@ -28,6 +28,7 @@ import {
 } from "./officialContracts.js";
 import { useModalFocus } from "./useModalFocus.js";
 import { buildDefaultOrganizationNodes, organizationRoomAssignments, validateOrganizationNodes } from "../organizationHierarchy.js";
+import { OFFICE_BRAND_MARK, OFFICE_WORKSPACE_LABEL } from "./branding.js";
 import {
   hydrateActiveMeetings,
   isMeetingArchiveDue,
@@ -151,7 +152,7 @@ function reservationWriterLabel(status, platform, activeMode, activeLabel) {
 function reservationLiveViewerUrl(status, platform) {
   const sessionId = status?.platformWriterHealth?.[platform]?.liveSessionId;
   if (!sessionId) return "";
-  const query = new URLSearchParams({ profile: "greeming-seoyun", sessionId });
+  const query = new URLSearchParams({ profile: "hermes-operations", sessionId });
   return `/agent-live?${query}`;
 }
 
@@ -186,10 +187,10 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   autoOpenChat: false,
 };
 
-const LOCAL_REPORTS_KEY = "greeming-hermes-local-reports";
-const NOTIFICATION_SETTINGS_KEY = "greeming-hermes-notification-settings";
-const ACTIVE_MEETING_KEY = "greeming-hermes-active-meeting";
-const MEETING_STORAGE_KEY = "greeming-hermes-meetings";
+const LOCAL_REPORTS_KEY = "hermes-office-local-reports";
+const NOTIFICATION_SETTINGS_KEY = "hermes-office-notification-settings";
+const ACTIVE_MEETING_KEY = "hermes-office-active-meeting";
+const MEETING_STORAGE_KEY = "hermes-office-meetings";
 
 function loadLocalState(key, fallback) {
   try {
@@ -230,10 +231,10 @@ function MeetingLobby({ profiles, activeMeetings = [], onOpenMeeting, onStartMee
       : Object.keys(TEAM_META).map((name) => ({ name, gateway_running: false }));
   }, [profiles]);
   const [topic, setTopic] = useState("이번 주 핵심 업무와 병목 점검");
-  const [selected, setSelected] = useState(() => new Set(["default", "greeming-seoyun"]));
+  const [selected, setSelected] = useState(() => new Set(["default", "hermes-operations"]));
   const [selectedArchiveId, setSelectedArchiveId] = useState("");
   const archivedMeetings = useMemo(
-    () => loadLocalState("greeming-hermes-meetings", []).filter((meeting) => meeting.status === "complete"),
+    () => loadLocalState("hermes-office-meetings", []).filter((meeting) => meeting.status === "complete"),
     [],
   );
   const selectedArchive = archivedMeetings.find((meeting) => meeting.id === selectedArchiveId);
@@ -1025,7 +1026,7 @@ function SystemPage({ workspace, connection, notificationSettings, onNotificatio
               );
             })}
           </div>
-          <label>프로필 ID<input value={profileDraft.name} readOnly={profileMode === "edit"} onChange={(event) => setProfileDraft((current) => ({ ...current, name: event.target.value }))} placeholder="greeming-new" /></label>
+          <label>프로필 ID<input value={profileDraft.name} readOnly={profileMode === "edit"} onChange={(event) => setProfileDraft((current) => ({ ...current, name: event.target.value }))} placeholder="hermes-new" /></label>
           <p className="settings-hint">기존 ID는 조직도·세션 참조를 보호하기 위해 잠깁니다. 표시 이름은 Office 조직 메타데이터이며 Hermes 프로필 API에는 저장하지 않습니다.</p>
           <label>역할<textarea value={profileDraft.role} onChange={(event) => setProfileDraft((current) => ({ ...current, role: event.target.value }))} placeholder="담당 역할과 책임" /></label>
           <label>기본 모델
@@ -1435,8 +1436,8 @@ function OfficeApp() {
   }, [officeNotice, error]);
 
   useEffect(() => {
-    window.localStorage.removeItem("greeming-hermes-missions");
-    window.localStorage.removeItem("greeming-hermes-approvals");
+    window.localStorage.removeItem("hermes-office-missions");
+    window.localStorage.removeItem("hermes-office-approvals");
   }, []);
 
   useEffect(() => {
@@ -1954,7 +1955,7 @@ function OfficeApp() {
         <div className="brand-lockup">
           <img src="/hermes-mark.svg" alt="" />
           <div>
-            <strong>GREEMING</strong>
+            <strong>{OFFICE_BRAND_MARK}</strong>
             <span>AI OFFICE</span>
           </div>
         </div>
@@ -2005,7 +2006,7 @@ function OfficeApp() {
             메뉴
           </button>
           <div>
-            <span>GREEMING WORKSPACE / {view.toUpperCase()}</span>
+            <span>{OFFICE_WORKSPACE_LABEL} / {view.toUpperCase()}</span>
             <h1>{title}</h1>
           </div>
           <div className="topbar-meta">

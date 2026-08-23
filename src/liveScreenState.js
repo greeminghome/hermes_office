@@ -1,5 +1,5 @@
-export const LIVE_ACTIVITY_KEY = "greeming-hermes-live-activity";
-export const LIVE_CHANNEL = "greeming-hermes-live-screen";
+export const LIVE_ACTIVITY_KEY = "hermes-office-live-activity";
+export const LIVE_CHANNEL = "hermes-office-live-screen";
 
 export function liveViewerUrl(profileName, sessionId = "") {
   const query = new URLSearchParams({ profile: profileName });

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDirectory, "../..");
+const legacyBrandPattern = /\x67\x72\x65\x65\x6d\x69\x6e\x67|\uadf8\ub9ac\ubc0d/i;
 
 function fail(message) {
   console.error(`package verification failed: ${message}`);
@@ -29,6 +30,9 @@ const requiredFiles = [
   "deploy/scripts/update.sh",
   "docs/DEPLOYMENT.md",
   "docs/HANDOFF_CHECKLIST.md",
+  "scripts/hermes_calendar_mcp.py",
+  "src/branding.js",
+  "src/storageMigration.js",
   "SECURITY.md",
 ];
 
@@ -59,6 +63,7 @@ const forbiddenPaths = [
 ];
 for (const file of files) {
   if (file === ".env.example") continue;
+  if (legacyBrandPattern.test(file)) fail(`legacy brand identifier found in path: ${file}`);
   if (forbiddenPaths.some((pattern) => pattern.test(file))) fail(`runtime secret or data path is tracked: ${file}`);
 }
 
@@ -68,9 +73,8 @@ const secretPatterns = [
   [/\bgh[pousr]_[A-Za-z0-9]{20,}\b/, "GitHub token"],
   [/\bxox[baprs]-[A-Za-z0-9-]{20,}\b/, "Slack token"],
   [/\bAIza[0-9A-Za-z_-]{30,}\b/, "Google API key"],
-  [/srv1737112\.hstgr\.cloud/i, "production hostname"],
-  [/greeminghome\.studio@gmail\.com/i, "production Google account"],
-  [/\b(?:751445|4573492|72609|43517)\b/, "production reservation identifier"],
+  [/\b(?:srv|vps)\d{5,}\.hstgr\.cloud\b/i, "production-style Hostinger hostname"],
+  [legacyBrandPattern, "legacy brand identifier"],
 ];
 for (const file of files) {
   if (file === "deploy/scripts/verify-package.mjs") continue;

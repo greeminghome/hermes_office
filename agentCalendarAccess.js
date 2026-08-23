@@ -5,7 +5,7 @@ export const DEFAULT_AGENT_CALENDARS = Object.freeze(["integrated"]);
 export const MAX_AGENT_CALENDAR_RANGE_DAYS = 93;
 export const MAX_AGENT_CALENDAR_RESULTS = 250;
 
-const PROFILE_PATTERN = /^(?:default|greeming-[a-z0-9-]{2,40})$/;
+const PROFILE_PATTERN = /^(?:default|[a-z][a-z0-9._-]{1,119})$/;
 
 function constantTimeEqual(leftValue, rightValue) {
   const left = Buffer.from(String(leftValue || ""));

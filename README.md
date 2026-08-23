@@ -13,14 +13,32 @@ Hermes Agent를 대시보드, 실시간 채팅, Live Screen, 데이터룸, 조�
 Ubuntu/Debian 계열 VPS와 Docker Engine + Docker Compose v2를 권장합니다.
 
 ```bash
-git clone https://github.com/greeminghome/hermes_office.git
-cd hermes_office
-PUBLIC_ORIGIN=https://office.example.com ./deploy/scripts/install.sh --init-only
+git clone https://github.com/your-org/hermes-office.git
+cd hermes-office
+PUBLIC_ORIGIN=https://office.example.com \
+HERMES_OFFICE_USER=admin \
+HERMES_OFFICE_PASSWORD='use-a-password-manager-value' \
+./deploy/scripts/install.sh --init-only
 ```
 
 설치 프로그램이 Office 로그인 비밀번호를 안전하게 입력받고 새 세션 서명키와
 에이전트 읽기 토큰을 생성합니다. 이어서 `.env`에서 `HERMES_TARGET`과 필요한
 네트워크 설정을 확인한 후 실행합니다.
+
+기본 제품명은 `Hermes Office`이고 기본 로그인 ID는 `admin`입니다. 비밀번호는
+저장소에 포함되지 않으며 설치할 때마다 새로 정합니다. 수령자 브랜드를 적용하려면
+첫 빌드 전에 `.env`의 다음 값을 변경합니다.
+
+```dotenv
+OFFICE_BRAND_NAME=Example AI Office
+OFFICE_BRAND_SHORT_NAME=Example
+OFFICE_BRAND_DESCRIPTION=Example team AI workspace
+```
+
+에이전트 기본 ID도 사람 이름이 아닌 `hermes-operations`, `hermes-brand`,
+`hermes-technology` 같은 역할 기반 ID를 사용합니다. 실제 Hermes Agent의 프로필
+ID가 다르면 `.env`의 `LIVE_SCREEN_ALLOWED_PROFILES`와
+`RESERVATION_AGENT_ALLOWED_PROFILES`를 같은 값으로 맞춥니다.
 
 ```bash
 ./deploy/scripts/install.sh

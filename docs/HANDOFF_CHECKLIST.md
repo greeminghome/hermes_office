@@ -20,6 +20,9 @@
 
 - [ ] 독립 VPS와 HTTPS 도메인을 준비했다.
 - [ ] 수령자 전용 Hermes Agent를 설치했다.
+- [ ] 제품명, 짧은 이름과 설명을 수령자 브랜드로 설정했다.
+- [ ] 기본 `admin` 대신 수령자 전용 Office 로그인 ID와 새 비밀번호를 설정했다.
+- [ ] 역할 기반 기본 프로필 ID와 실제 Hermes Agent 프로필 ID를 일치시켰다.
 - [ ] `install.sh --init-only`로 새 비밀값을 생성했다.
 - [ ] Office와 Agent 포트를 인터넷에 직접 노출하지 않았다.
 - [ ] `doctor.sh --strict-agent`가 성공한다.

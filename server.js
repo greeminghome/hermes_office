@@ -41,6 +41,7 @@ import {
   saveReservationGoogleClient,
 } from "./reservationIntegrations.js";
 import { createReservationSyncController } from "./reservationSync/index.js";
+import { DEFAULT_TEAM_PROFILE_IDS } from "./src/profileIds.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 4173);
@@ -49,7 +50,8 @@ const instagramBridgeTarget = process.env.INSTAGRAM_BRIDGE_TARGET ? new URL(proc
 const instagramBridgeAdminToken = process.env.INSTAGRAM_BRIDGE_ADMIN_TOKEN || "";
 const publicOrigin = process.env.PUBLIC_ORIGIN || "";
 const canonicalOrigin = publicOrigin ? new URL(publicOrigin) : null;
-const authUser = process.env.HERMES_OFFICE_USER || "greeming_home";
+const officeBrandName = String(process.env.OFFICE_BRAND_NAME || "Hermes Office").trim().slice(0, 80) || "Hermes Office";
+const authUser = process.env.HERMES_OFFICE_USER || "admin";
 const authPasswordHash = process.env.HERMES_OFFICE_PASSWORD_HASH || "";
 const hermesAuthProvider = process.env.HERMES_AUTH_PROVIDER || "basic";
 const hermesAuthMode = process.env.HERMES_AUTH_MODE || "official";
@@ -89,31 +91,13 @@ const staticRoot = path.join(__dirname, "dist");
 const secureCookie = publicOrigin.startsWith("https://") || process.env.COOKIE_SECURE === "true";
 const dataRoomListCache = new Map();
 const liveScreenCache = new Map();
-const liveScreenAllowedProfiles = new Set(splitList(process.env.LIVE_SCREEN_ALLOWED_PROFILES || [
-  "default",
-  "greeming-seoyun",
-  "greeming-jian",
-  "greeming-taeo",
-  "greeming-harin",
-  "greeming-doyun",
-  "greeming-yuna",
-  "greeming-junseo",
-  "greeming-jaehyun",
-  "greeming-minjun",
-].join(",")));
+const liveScreenAllowedProfiles = new Set(splitList(
+  process.env.LIVE_SCREEN_ALLOWED_PROFILES || DEFAULT_TEAM_PROFILE_IDS.join(","),
+));
 const reservationAgentReadToken = String(process.env.RESERVATION_AGENT_READ_TOKEN || "");
-const reservationAgentAllowedProfiles = new Set(splitList(process.env.RESERVATION_AGENT_ALLOWED_PROFILES || [
-  "default",
-  "greeming-seoyun",
-  "greeming-jian",
-  "greeming-taeo",
-  "greeming-harin",
-  "greeming-doyun",
-  "greeming-yuna",
-  "greeming-junseo",
-  "greeming-jaehyun",
-  "greeming-minjun",
-].join(",")));
+const reservationAgentAllowedProfiles = new Set(splitList(
+  process.env.RESERVATION_AGENT_ALLOWED_PROFILES || DEFAULT_TEAM_PROFILE_IDS.join(","),
+));
 const liveScreenTickets = new LiveScreenTicketStore({ ttlMs: liveScreenTicketTtlMs });
 const liveScreenWebSocketServer = new WebSocketServer({
   noServer: true,
@@ -715,7 +699,7 @@ function loginPage(message = "", next = "/") {
   const safeNext = safeNextPath(next);
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Greeming Hermes Login</title>
+<title>${escapeHtml(officeBrandName)} Login</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:#14231f;color:#f8f1e5;font-family:system-ui,"Noto Sans KR",sans-serif;overflow-x:hidden}
@@ -724,7 +708,7 @@ h1{margin:0 0 6px;font-size:24px}p{margin:0 0 20px;color:#a9bcb4;font-size:13px;
 label{display:block;margin:14px 0 6px;color:#c9d7d0;font-size:12px}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #5d786d;border-radius:10px;background:#12231d;color:white}
 button{width:100%;margin-top:18px;padding:12px;border:0;border-radius:10px;background:#e0a35c;color:#16241f;font-weight:800;cursor:pointer}.error{color:#ffb4a5}
 </style></head><body><form method="post" action="/login?next=${encodeURIComponent(safeNext)}">
-<h1>Greeming Hermes</h1><p>팀 워크스페이스에 로그인하세요.</p>
+<h1>${escapeHtml(officeBrandName)}</h1><p>팀 워크스페이스에 로그인하세요.</p>
 ${message ? `<p class="error">${message}</p>` : ""}
 <input type="hidden" name="next" value="${escapeHtml(safeNext)}">
 <label>ID</label><input name="user" autocomplete="username" required>
@@ -744,7 +728,7 @@ function loginPageV2(message = "", next = "/") {
     : "";
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Greeming Hermes Login</title>
+<title>${escapeHtml(officeBrandName)} Login</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background:#14231f;color:#f8f1e5;font-family:system-ui,"Noto Sans KR",sans-serif;overflow-x:hidden}
@@ -757,7 +741,7 @@ label{display:block;margin:14px 0 6px;color:#c9d7d0;font-size:12px}input{width:1
 .submit{width:100%;margin-top:18px;padding:12px;border:0;border-radius:10px;background:#e0a35c;color:#16241f;font-weight:800;cursor:pointer}
 .error{display:grid;gap:3px;margin:0 0 16px;padding:12px;border:1px solid #d97966;border-radius:12px;background:#4b211d;color:#ffd1c8;font-size:13px;line-height:1.45}.error strong{color:#fff;font-size:12px}
 </style></head><body><form method="post" action="/login?next=${encodeURIComponent(safeNext)}">
-<h1>Greeming Hermes</h1><p>Office와 Hermes에 함께 로그인합니다.</p>
+<h1>${escapeHtml(officeBrandName)}</h1><p>Office와 Hermes에 함께 로그인합니다.</p>
 ${errorMarkup}
 <input type="hidden" name="next" value="${escapeHtml(safeNext)}">
 <label>Office ID</label><input name="user" autocomplete="username" required>
@@ -1149,7 +1133,7 @@ function dataRootLabel(root) {
   if (root.includes("google-drive")) return "데이터 공간";
   if (root.includes("profiles")) return "구성원 작업 공간";
   if (root.includes("workspace")) return "전체 문서";
-  if (root.includes("greeminghome")) return "GitHub 문서함";
+  if (root.includes("github")) return "GitHub 문서함";
   if (root.includes("archive")) return "Archive";
   return path.basename(root) || root;
 }
@@ -2069,5 +2053,5 @@ reservationSync.start().catch((error) => {
 });
 
 server.listen(port, "0.0.0.0", () => {
-  console.log(`Greeming Hermes Office listening on ${server.address().port}`);
+  console.log(`${officeBrandName} listening on ${server.address().port}`);
 });

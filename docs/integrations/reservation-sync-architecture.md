@@ -129,7 +129,7 @@ source_platform + normalized_start + normalized_end + product_code + masked_cust
 차단 블록 UID 규칙:
 
 ```text
-greeming:block:{target_platform}:{origin_platform}:{external_booking_id}:{venue_id}
+hermes-office:block:{target_platform}:{origin_platform}:{external_booking_id}:{venue_id}
 ```
 
 Google 이벤트에는 결정적 event ID와 `extendedProperties.private`를 함께 넣는다.
@@ -460,7 +460,7 @@ reservationSync/
 - `/healthz`와 별도로 connector별 마지막 성공 시간, lag, 실패 수를 제공
 
 Agent 연동은 탐지 자체가 아니라 운영 조회와 설명에 사용한다. 각 Hermes 프로필은 Native MCP의
-`mcp_greeming_calendar_calendar_events`를 통해 Office의 읽기 전용 broker를 호출한다.
+`mcp_hermes_calendar_calendar_events`를 통해 Office의 읽기 전용 broker를 호출한다.
 
 - 기본 조회 대상은 중복이 없는 `integrated` 캘린더
 - 필요 시 `manual`, `hourplace`를 명시적으로 조회
@@ -547,7 +547,7 @@ iCal을 가져가는 외부 플랫폼 자체의 10~30분 반영 지연은 Hermes
 통과 조건:
 
 - 중복·순서 뒤바뀜·재시작 테스트 통과
-- 실제 샘플에서 예약 생성/변경/취소가 정확히 재현됨
+- 실제 샘플에서 예약 생성/변경/취소가 정확히 반영됨
 - 잘못된/새 템플릿을 `unknown`으로 안전 격리함
 
 ### Phase 2. 읽기 전용 shadow 운영

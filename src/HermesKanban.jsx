@@ -21,7 +21,7 @@ const COLUMNS = [
 ];
 
 const STATUS_LABEL = Object.fromEntries(COLUMNS.map(([id, label]) => [id, label]));
-const BOARD_CACHE_KEY = "greeming-hermes-kanban-board";
+const BOARD_CACHE_KEY = "hermes-office-kanban-board";
 const DONE_ARCHIVE_DAYS = 7;
 const DONE_ARCHIVE_MS = DONE_ARCHIVE_DAYS * 24 * 60 * 60 * 1000;
 

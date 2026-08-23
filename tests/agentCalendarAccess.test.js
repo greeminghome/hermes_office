@@ -8,22 +8,22 @@ import {
 
 test("agent calendar authorization requires both a fixed token and an allowed profile", () => {
   const expectedToken = "test-calendar-token-with-at-least-32-bytes";
-  const allowedProfiles = new Set(["greeming-seoyun"]);
+  const allowedProfiles = new Set(["hermes-operations"]);
   assert.equal(authorizeAgentCalendarRequest({
     authorization: `Bearer ${expectedToken}`,
-    profile: "greeming-seoyun",
+    profile: "hermes-operations",
     expectedToken,
     allowedProfiles,
-  }), "greeming-seoyun");
+  }), "hermes-operations");
   assert.equal(authorizeAgentCalendarRequest({
     authorization: "Bearer wrong",
-    profile: "greeming-seoyun",
+    profile: "hermes-operations",
     expectedToken,
     allowedProfiles,
   }), "");
   assert.equal(authorizeAgentCalendarRequest({
     authorization: `Bearer ${expectedToken}`,
-    profile: "greeming-unknown",
+    profile: "hermes-unknown",
     expectedToken,
     allowedProfiles,
   }), "");
@@ -48,7 +48,7 @@ test("agent calendar query is bounded and defaults to the integrated calendar", 
 test("agent calendar event output excludes Google descriptions, links, attendees, and raw ids", () => {
   const event = publicCalendarEvent({
     id: "raw-google-event-id",
-    summary: "[예약] 스페이스클라우드 · 그리밍홈",
+    summary: "[예약] 스페이스클라우드 · 테스트 공간",
     description: "private notes",
     htmlLink: "https://calendar.google.com/private",
     attendees: [{ email: "guest@example.com" }],
@@ -58,7 +58,7 @@ test("agent calendar event output excludes Google descriptions, links, attendees
     transparency: "opaque",
     updated: "2026-08-18T01:00:00.000Z",
     extendedProperties: { private: { origin: "spacecloud", bookingKey: "private-booking-key" } },
-  }, { key: "integrated", name: "그리밍홈 전체 예약" });
+  }, { key: "integrated", name: "테스트 공간 전체 예약" });
   assert.equal(event.calendar, "integrated");
   assert.equal(event.origin, "spacecloud");
   assert.notEqual(event.id, "raw-google-event-id");

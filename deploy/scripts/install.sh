@@ -14,7 +14,10 @@ usage() {
     'Optional non-interactive inputs:' \
     '  PUBLIC_ORIGIN=https://office.example.com' \
     '  HERMES_OFFICE_USER=admin' \
-    '  HERMES_OFFICE_PASSWORD=use-a-password-manager-value'
+    '  HERMES_OFFICE_PASSWORD=use-a-password-manager-value' \
+    '  OFFICE_BRAND_NAME="Hermes Office"' \
+    '  OFFICE_BRAND_SHORT_NAME=Hermes' \
+    '  OFFICE_BRAND_DESCRIPTION="Self-hosted AI team workspace"'
 }
 
 while (( $# > 0 )); do
@@ -34,11 +37,16 @@ docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 is required"
 requested_origin="${PUBLIC_ORIGIN:-}"
 requested_user="${HERMES_OFFICE_USER:-}"
 requested_password="${HERMES_OFFICE_PASSWORD:-}"
+requested_brand_name="${OFFICE_BRAND_NAME:-}"
+requested_brand_short_name="${OFFICE_BRAND_SHORT_NAME:-}"
+requested_brand_description="${OFFICE_BRAND_DESCRIPTION:-}"
 unset HERMES_OFFICE_PASSWORD
 
+created_env=false
 if [[ ! -f "$ENV_FILE" ]]; then
   cp -- "$PROJECT_ROOT/.env.example" "$ENV_FILE"
   chmod 600 "$ENV_FILE"
+  created_env=true
   info "created $ENV_FILE"
 fi
 
@@ -68,8 +76,21 @@ if [[ -n "$requested_origin" ]]; then
   origin_host="${origin_host%%:*}"
   set_env_value PUBLIC_ORIGIN_HOST "$origin_host"
 fi
+if [[ "$created_env" == true && -z "$requested_user" && -t 0 ]]; then
+  read -r -p 'Office login ID [admin]: ' requested_user
+  requested_user="${requested_user:-admin}"
+fi
 if [[ -n "$requested_user" ]]; then
   set_env_value HERMES_OFFICE_USER "$requested_user"
+fi
+if [[ -n "$requested_brand_name" ]]; then
+  set_env_value OFFICE_BRAND_NAME "$requested_brand_name"
+fi
+if [[ -n "$requested_brand_short_name" ]]; then
+  set_env_value OFFICE_BRAND_SHORT_NAME "$requested_brand_short_name"
+fi
+if [[ -n "$requested_brand_description" ]]; then
+  set_env_value OFFICE_BRAND_DESCRIPTION "$requested_brand_description"
 fi
 
 if [[ "$(env_value HERMES_OFFICE_PASSWORD_HASH)" == *CHANGE_ME* ]]; then

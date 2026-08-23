@@ -5,6 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_OFFICE_BRAND_NAME: "${OFFICE_BRAND_NAME:-Hermes Office}"
+        VITE_OFFICE_BRAND_SHORT_NAME: "${OFFICE_BRAND_SHORT_NAME:-Hermes}"
+        VITE_OFFICE_BRAND_DESCRIPTION: "${OFFICE_BRAND_DESCRIPTION:-Self-hosted AI team workspace}"
     image: "${HERMES_OFFICE_IMAGE:-hermes-office:local}"
     restart: unless-stopped
     init: true
@@ -20,6 +24,7 @@ services:
       PORT: "4173"
       PUBLIC_ORIGIN: "${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}"
       COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      OFFICE_BRAND_NAME: "${OFFICE_BRAND_NAME:-Hermes Office}"
       HERMES_TARGET: "${HERMES_TARGET:-http://host.docker.internal:9119}"
       HERMES_AUTH_MODE: "${HERMES_AUTH_MODE:-official}"
       HERMES_AUTH_PROVIDER: "${HERMES_AUTH_PROVIDER:-basic}"
@@ -32,7 +37,7 @@ services:
       DATA_ROOM_MAX_FILES: "${DATA_ROOM_MAX_FILES:-10000}"
       LIVE_SCREEN_CDP_URL: "${LIVE_SCREEN_CDP_URL:-}"
       LIVE_SCREEN_PROFILE_CDP_URLS: "${LIVE_SCREEN_PROFILE_CDP_URLS:-}"
-      LIVE_SCREEN_ALLOWED_PROFILES: "${LIVE_SCREEN_ALLOWED_PROFILES:-default,greeming-doyun,greeming-harin,greeming-jaehyun,greeming-jian,greeming-junseo,greeming-minjun,greeming-seoyun,greeming-taeo,greeming-yuna}"
+      LIVE_SCREEN_ALLOWED_PROFILES: "${LIVE_SCREEN_ALLOWED_PROFILES:-default,hermes-creative,hermes-content,hermes-technology,hermes-brand,hermes-finance,hermes-director,hermes-operations,hermes-growth,hermes-customer}"
       INSTAGRAM_BRIDGE_TARGET: "${INSTAGRAM_BRIDGE_TARGET:-}"
       INSTAGRAM_BRIDGE_ADMIN_TOKEN: "${INSTAGRAM_BRIDGE_ADMIN_TOKEN:-}"
       HERMES_GOOGLE_TOKEN_PATH: "${HERMES_GOOGLE_TOKEN_PATH:-/run/secrets/google_office_readonly_token.json}"
@@ -46,7 +51,7 @@ services:
       RESERVATION_GOOGLE_TOKEN_PATH: "/data/reservations/google_reservation_oauth_token.json"
       RESERVATION_GOOGLE_REDIRECT_URI: "${PUBLIC_ORIGIN}/bridge/reservations/google/callback"
       RESERVATION_AGENT_READ_TOKEN: "${RESERVATION_AGENT_READ_TOKEN:?RESERVATION_AGENT_READ_TOKEN is required}"
-      RESERVATION_AGENT_ALLOWED_PROFILES: "${RESERVATION_AGENT_ALLOWED_PROFILES:-default,greeming-doyun,greeming-harin,greeming-jaehyun,greeming-jian,greeming-junseo,greeming-minjun,greeming-seoyun,greeming-taeo,greeming-yuna}"
+      RESERVATION_AGENT_ALLOWED_PROFILES: "${RESERVATION_AGENT_ALLOWED_PROFILES:-default,hermes-creative,hermes-content,hermes-technology,hermes-brand,hermes-finance,hermes-director,hermes-operations,hermes-growth,hermes-customer}"
       RESERVATION_TIME_ZONE: "${RESERVATION_TIME_ZONE:-Asia/Seoul}"
       RESERVATION_VENUE_ID: "${RESERVATION_VENUE_ID:-hermes-office}"
       RESERVATION_VENUE_NAME: "${RESERVATION_VENUE_NAME:-Hermes Office}"

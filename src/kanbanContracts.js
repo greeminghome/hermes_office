@@ -1,5 +1,5 @@
-const OFFICE_MARKER = "greeming-office-kanban:v1";
-const MARKER_PATTERN = /\n?<!-- greeming-office-kanban:v1 ([A-Za-z0-9_-]+) -->\s*$/;
+const OFFICE_MARKER = "hermes-office-kanban:v1";
+const MARKER_PATTERN = /\n?<!-- (?:[a-z0-9._-]+-)?office-kanban:v1 ([A-Za-z0-9_-]+) -->\s*$/i;
 
 function encodeMetadata(metadata) {
   const json = JSON.stringify(metadata ?? {});
@@ -62,14 +62,14 @@ const MISSION_STATUS_BY_TASK_STATUS = {
 
 const ROOM_BY_PROFILE = {
   default: "executive",
-  "greeming-seoyun": "operations",
-  "greeming-jian": "brand",
-  "greeming-taeo": "content",
-  "greeming-harin": "content",
-  "greeming-doyun": "creative",
-  "greeming-yuna": "customer",
-  "greeming-junseo": "finance",
-  "greeming-jaehyun": "tech",
+  "hermes-operations": "operations",
+  "hermes-brand": "brand",
+  "hermes-growth": "content",
+  "hermes-content": "content",
+  "hermes-creative": "creative",
+  "hermes-customer": "customer",
+  "hermes-finance": "finance",
+  "hermes-technology": "tech",
 };
 
 function taskProgress(task, status) {
@@ -124,7 +124,7 @@ export function officialTaskPatch(task, patch, metadata) {
   }
   if (payload.status === "done") {
     payload.summary = String(patch.summary ?? metadata?.status_note ?? "Completed in Hermes Office").trim();
-    payload.metadata = { greeming_office: metadata };
+    payload.metadata = { hermes_office: metadata };
   }
   return payload;
 }

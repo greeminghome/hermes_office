@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
-  MINJUN_HERMES_PROFILE_ID,
-  MINJUN_UI_PROFILE_ID,
+  PRIMARY_HERMES_PROFILE_ID,
+  PRIMARY_UI_PROFILE_ID,
   normalizeUiProfiles,
   normalizeUiSession,
   toHermesProfileId,
@@ -11,35 +11,35 @@ import {
   withHermesProfile,
 } from "../src/profileIds.js";
 
-test("Minjun's UI alias resolves to the deployed Hermes profile", () => {
-  assert.equal(MINJUN_UI_PROFILE_ID, "default");
-  assert.equal(MINJUN_HERMES_PROFILE_ID, "greeming-minjun");
-  assert.equal(toHermesProfileId("default"), "greeming-minjun");
-  assert.equal(toHermesProfileId("greeming-seoyun"), "greeming-seoyun");
+test("the primary UI alias resolves to the deployed Hermes profile", () => {
+  assert.equal(PRIMARY_UI_PROFILE_ID, "default");
+  assert.equal(PRIMARY_HERMES_PROFILE_ID, "hermes-director");
+  assert.equal(toHermesProfileId("default"), "hermes-director");
+  assert.equal(toHermesProfileId("hermes-operations"), "hermes-operations");
   assert.equal(toHermesProfileId(""), "");
-  assert.equal(toUiProfileId("greeming-minjun"), "default");
-  assert.equal(toUiProfileId("greeming-seoyun"), "greeming-seoyun");
+  assert.equal(toUiProfileId("hermes-director"), "default");
+  assert.equal(toUiProfileId("hermes-operations"), "hermes-operations");
 });
 
-test("Minjun aliases collapse into one UI profile while preserving the deployed runtime state", () => {
+test("primary aliases collapse into one UI profile while preserving the deployed runtime state", () => {
   const profiles = normalizeUiProfiles([
     { name: "default", description: "legacy alias", gateway_running: false },
-    { name: "greeming-minjun", description: "canonical runtime", gateway_running: true, model: "gpt-5" },
-    { name: "greeming-seoyun", gateway_running: true },
+    { name: "hermes-director", description: "canonical runtime", gateway_running: true, model: "gpt-5" },
+    { name: "hermes-operations", gateway_running: true },
   ]);
-  assert.deepEqual(profiles.map((profile) => profile.name), ["default", "greeming-seoyun"]);
+  assert.deepEqual(profiles.map((profile) => profile.name), ["default", "hermes-operations"]);
   assert.deepEqual(profiles[0], {
     name: "default",
     description: "canonical runtime",
     gateway_running: true,
     model: "gpt-5",
   });
-  assert.equal(normalizeUiSession({ id: "s1", profile: "greeming-minjun" }).profile, "default");
+  assert.equal(normalizeUiSession({ id: "s1", profile: "hermes-director" }).profile, "default");
 });
 
 test("Gateway profile normalization is immutable and leaves unrelated requests alone", () => {
   const original = { cols: 96, profile: "default" };
-  assert.deepEqual(withHermesProfile(original), { cols: 96, profile: "greeming-minjun" });
+  assert.deepEqual(withHermesProfile(original), { cols: 96, profile: "hermes-director" });
   assert.deepEqual(original, { cols: 96, profile: "default" });
 
   const unrelated = { session_id: "session-1", text: "hello" };

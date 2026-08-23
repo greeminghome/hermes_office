@@ -3,8 +3,8 @@ import { decodeHermesText, hermesFetch, isMeetingSession, loadArchivedSessions, 
 import { TEAM_META } from "./officeData.js";
 import { sanitizeArchiveMessages, sanitizeArchiveText } from "./archiveContracts.js";
 
-const MEETING_STORAGE_KEY = "greeming-hermes-meetings";
-const ARCHIVE_CACHE_KEY = "greeming-hermes-archive-snapshot";
+const MEETING_STORAGE_KEY = "hermes-office-meetings";
+const ARCHIVE_CACHE_KEY = "hermes-office-archive-snapshot";
 function cleanText(value) {
   return sanitizeArchiveText(decodeHermesText(value ?? ""));
 }

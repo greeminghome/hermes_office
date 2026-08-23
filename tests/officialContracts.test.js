@@ -33,12 +33,12 @@ test("profile update separates rename, description, and model contracts", () => 
   assert.deepEqual(result.requests[0].body, { new_name: "new" });
 });
 
-test("editing Minjun's UI alias writes to the single deployed Hermes profile without renaming it", () => {
+test("editing the primary UI alias writes to the single deployed Hermes profile without renaming it", () => {
   const result = profileUpdateRequests("default", { name: "default", role: "총괄", model: "gpt-5" }, models);
-  assert.equal(result.targetName, "greeming-minjun");
+  assert.equal(result.targetName, "hermes-director");
   assert.deepEqual(result.requests.map(({ path, method }) => ({ path, method })), [
-    { path: "/api/profiles/greeming-minjun/description", method: "PUT" },
-    { path: "/api/profiles/greeming-minjun/model", method: "PUT" },
+    { path: "/api/profiles/hermes-director/description", method: "PUT" },
+    { path: "/api/profiles/hermes-director/model", method: "PUT" },
   ]);
 });
 

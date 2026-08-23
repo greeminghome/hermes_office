@@ -12,6 +12,6 @@ test("Office and command center do not seed or persist demo mission and approval
   assert.match(app, /const \[missions, setMissions\] = useState\(\[\]\)/);
   assert.match(app, /const board = await hermesFetch\("\/api\/plugins\/kanban\/board"/);
   assert.match(app, /setMissions\(officeMissionsFromBoard\(board\)\)/);
-  assert.doesNotMatch(app, /setItem\("greeming-hermes-missions"/);
-  assert.doesNotMatch(app, /setItem\("greeming-hermes-approvals"/);
+  assert.doesNotMatch(app, /setItem\("hermes-office-missions"/);
+  assert.doesNotMatch(app, /setItem\("hermes-office-approvals"/);
 });

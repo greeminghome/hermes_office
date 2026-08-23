@@ -44,7 +44,7 @@ const COLLABORATION_RULES = [
   ["작업 위임", "전문성이 필요한 일은 관련 구성원에게 작업 요청으로 넘길 수 있습니다."],
   ["회의 전환", "여러 담당자 판단이 필요한 경우 AI 회의로 전환할 수 있습니다."],
 ];
-const TEAM_CACHE_KEY = "greeming-hermes-team-workspace";
+const TEAM_CACHE_KEY = "hermes-office-team-workspace";
 const EMPTY_ORGANIZATION_NODES = [];
 
 function loadTeamCache() {

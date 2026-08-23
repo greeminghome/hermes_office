@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HermesGateway } from "./gateway.js";
 import { hermesFetch } from "./hermes.js";
 import { mergeActivityView } from "./activityView.js";
@@ -7,7 +7,7 @@ import { TEAM_META } from "./officeData.js";
 import { hitlResponseRequest, isHitlRequestExpired, normalizeHitlRequest } from "./officialContracts.js";
 import { patchOfficeTaskFromLatest } from "./kanbanContracts.js";
 
-const MEETING_STORAGE_KEY = "greeming-hermes-meetings";
+const MEETING_STORAGE_KEY = "hermes-office-meetings";
 
 function loadMeetingRecord(meetingId) {
   try {
@@ -23,7 +23,7 @@ function meetingPrompt(topic, speaker, transcript, round) {
     ? `\n\nMeeting transcript so far:\n${transcript.map((item) => `- ${TEAM_META[item.profile]?.name}: ${item.text}`).join("\n")}`
     : "";
   return [
-    `[Greeming AI team meeting / round ${round}]`,
+    `[Hermes Office team meeting / round ${round}]`,
     `Topic: ${topic}`,
     `You are ${speaker.name} (${speaker.role}).`,
     "Speak from your role. Give concise opinions, risks, recommendations, and next actions.",
@@ -42,7 +42,7 @@ function synthesisPrompt(topic, transcript) {
     "Include: 1) decisions, 2) unresolved issues or risks, 3) action items by owner, 4) approvals needed from the user.",
     "At the end, add one line per Kanban task in this exact format:",
     "[KANBAN] profile | task title | completion criteria",
-    "Use only these profile ids: default, greeming-seoyun, greeming-jian, greeming-taeo, greeming-harin, greeming-doyun, greeming-yuna, greeming-junseo, greeming-jaehyun.",
+    "Use only these profile ids: default, hermes-operations, hermes-brand, hermes-growth, hermes-content, hermes-creative, hermes-customer, hermes-finance, hermes-technology.",
     "",
     ...transcript.map((item) => `${TEAM_META[item.profile]?.name}: ${item.text}`),
   ].join("\n");
@@ -277,7 +277,7 @@ export default function MeetingConsole({ meeting, onActivityChange, onMeetingCom
           meeting_decisions: meetingOutcome?.decisions ?? [],
           meeting_blockers: meetingOutcome?.blockers ?? [],
           meeting_outcome: meetingOutcome ?? null,
-          reviewers: action.assignee === "greeming-seoyun" ? [] : ["greeming-seoyun"],
+          reviewers: action.assignee === "hermes-operations" ? [] : ["hermes-operations"],
           task_events: [{
             id: crypto.randomUUID(),
             type: "meeting:task-created",

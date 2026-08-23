@@ -1,7 +1,7 @@
 # Hermes Agent compatibility image
 
 Hermes Office의 세션별 Live Screen은 Agent 쪽에서도 브라우저 context 격리와 고정
-session target을 지원해야 합니다. 이 디렉터리는 그 호환 런타임을 재현하는 선택형
+session target을 지원해야 합니다. 이 디렉터리는 그 호환 런타임을 구성하는 선택형
 이미지 빌드 템플릿입니다. Office 기본 설치가 이 이미지를 자동으로 설치하거나 기존
 Agent를 덮어쓰지는 않습니다.
 

@@ -1,15 +1,15 @@
 import { toUiProfileId } from "./profileIds.js";
 
 export const TEAM_META = {
-  default: { name: "민준", role: "CEO · 총괄 오케스트레이터", initials: "MJ", color: "#e8774f", avatar: "/agents/minjun.png" },
-  "greeming-seoyun": { name: "서윤", role: "COO · 운영 총괄", initials: "SY", color: "#7a9f8e", avatar: "/agents/seoyun.png" },
-  "greeming-jian": { name: "지안", role: "브랜드 전략", initials: "JA", color: "#d39a6a", avatar: "/agents/jian.png" },
-  "greeming-taeo": { name: "태오", role: "마케팅 · 성장 전략", initials: "TO", color: "#7699ad", avatar: "/agents/taeo.png" },
-  "greeming-harin": { name: "하린", role: "콘텐츠 · SNS", initials: "HR", color: "#b18ca4", avatar: "/agents/harin.png" },
-  "greeming-doyun": { name: "도윤", role: "크리에이티브 · 제작 QA", initials: "DY", color: "#8c9c72", avatar: "/agents/doyun.png" },
-  "greeming-yuna": { name: "유나", role: "고객 상담 · 세일즈", initials: "YN", color: "#c18872", avatar: "/agents/yuna.png" },
-  "greeming-junseo": { name: "준서", role: "재무 · KPI", initials: "JS", color: "#7f8fbc", avatar: "/agents/junseo.png" },
-  "greeming-jaehyun": { name: "재현", role: "CTO · 기술 총괄", initials: "JH", color: "#728f92", avatar: "/agents/jaehyun.png" },
+  default: { name: "총괄 에이전트", role: "리더십 · 총괄 오케스트레이션", initials: "HQ", color: "#e8774f", avatar: "/agents/director.png" },
+  "hermes-operations": { name: "운영 에이전트", role: "운영 · 일정 및 실행", initials: "OP", color: "#7a9f8e", avatar: "/agents/operations.png" },
+  "hermes-brand": { name: "브랜드 에이전트", role: "브랜드 · 전략 및 메시지", initials: "BR", color: "#d39a6a", avatar: "/agents/brand.png" },
+  "hermes-growth": { name: "성장 에이전트", role: "마케팅 · 성장 전략", initials: "GR", color: "#7699ad", avatar: "/agents/growth.png" },
+  "hermes-content": { name: "콘텐츠 에이전트", role: "콘텐츠 · 채널 운영", initials: "CO", color: "#b18ca4", avatar: "/agents/content.png" },
+  "hermes-creative": { name: "제작 에이전트", role: "크리에이티브 · 제작 QA", initials: "CR", color: "#8c9c72", avatar: "/agents/creative.png" },
+  "hermes-customer": { name: "고객 에이전트", role: "고객 경험 · 상담", initials: "CS", color: "#c18872", avatar: "/agents/customer.png" },
+  "hermes-finance": { name: "재무 에이전트", role: "재무 · KPI", initials: "FN", color: "#7f8fbc", avatar: "/agents/finance.png" },
+  "hermes-technology": { name: "기술 에이전트", role: "기술 · 자동화 및 보안", initials: "IT", color: "#728f92", avatar: "/agents/technology.png" },
 };
 
 export const OFFICE_FLOOR_ZONES = [
@@ -40,11 +40,11 @@ export const ROOMS = [
     w: 20,
     h: 25,
     status: "working",
-    description: "중요한 판단을 정리하고 실행 방향을 확정하는 대표님의 의사결정 공간입니다.",
+    description: "중요한 판단을 정리하고 실행 방향을 확정하는 사용자의 의사결정 공간입니다.",
     actions: [
-      ["chat", "민준과 대화", "전략 판단이나 업무 지시를 바로 시작합니다."],
+      ["chat", "총괄 에이전트와 대화", "전략 판단이나 업무 지시를 바로 시작합니다."],
       ["brief", "오늘의 브리핑", "핵심 현황과 승인 대기를 빠르게 확인합니다."],
-      ["sessions", "최근 보고", "민준이 참여한 최근 대화를 살펴봅니다."],
+      ["sessions", "최근 보고", "총괄 에이전트가 참여한 최근 대화를 살펴봅니다."],
     ],
   },
   {
@@ -53,14 +53,14 @@ export const ROOMS = [
     subtitle: "AI 팀 회의",
     profiles: [
       "default",
-      "greeming-seoyun",
-      "greeming-jian",
-      "greeming-taeo",
-      "greeming-harin",
-      "greeming-doyun",
-      "greeming-yuna",
-      "greeming-junseo",
-      "greeming-jaehyun",
+      "hermes-operations",
+      "hermes-brand",
+      "hermes-growth",
+      "hermes-content",
+      "hermes-creative",
+      "hermes-customer",
+      "hermes-finance",
+      "hermes-technology",
     ],
     x: 39,
     y: 17,
@@ -78,7 +78,7 @@ export const ROOMS = [
     id: "operations",
     label: "운영실",
     subtitle: "일정과 실행",
-    profiles: ["greeming-seoyun"],
+    profiles: ["hermes-operations"],
     x: 64,
     y: 18,
     w: 16,
@@ -86,7 +86,7 @@ export const ROOMS = [
     status: "working",
     description: "업무 분장, 일정, SOP와 운영 병목을 관리하는 실행 중심 공간입니다.",
     actions: [
-      ["chat", "서윤에게 요청", "운영 계획과 실행 순서를 논의합니다."],
+      ["chat", "운영 에이전트에게 요청", "운영 계획과 실행 순서를 논의합니다."],
       ["tasks", "업무 보드", "요청부터 완료까지 진행 상태를 확인합니다."],
       ["brief", "운영 브리핑", "오늘의 운영 이슈와 마감 업무를 봅니다."],
     ],
@@ -104,7 +104,7 @@ export const ROOMS = [
     description: "Hermes Gateway, 모델, 연결 상태와 장애 신호를 실시간으로 확인합니다.",
     actions: [
       ["system", "시스템 현황", "Gateway와 프로필 연결 상태를 확인합니다."],
-      ["chat", "재현에게 문의", "기술 문제와 자동화 개선을 논의합니다."],
+      ["chat", "기술 에이전트에게 문의", "기술 문제와 자동화 개선을 논의합니다."],
       ["sessions", "장애 기록", "기술 관련 최근 세션을 살펴봅니다."],
     ],
   },
@@ -112,7 +112,7 @@ export const ROOMS = [
     id: "brand",
     label: "브랜드룸",
     subtitle: "정체성과 메시지",
-    profiles: ["greeming-jian"],
+    profiles: ["hermes-brand"],
     x: 8,
     y: 38,
     w: 22,
@@ -120,7 +120,7 @@ export const ROOMS = [
     status: "online",
     description: "브랜드의 기준, 포지셔닝, 메시지와 고객에게 보이는 인상을 다듬습니다.",
     actions: [
-      ["chat", "지안과 대화", "브랜드 관점의 검토를 요청합니다."],
+      ["chat", "브랜드 에이전트와 대화", "브랜드 관점의 검토를 요청합니다."],
       ["files", "브랜드 문서", "정체성 문서와 핵심 가이드를 엽니다."],
       ["sessions", "최근 검토", "브랜드 관련 대화 기록을 확인합니다."],
     ],
@@ -129,7 +129,7 @@ export const ROOMS = [
     id: "content",
     label: "콘텐츠룸",
     subtitle: "캠페인과 발행",
-    profiles: ["greeming-taeo", "greeming-harin"],
+    profiles: ["hermes-growth", "hermes-content"],
     x: 5,
     y: 58,
     w: 24,
@@ -137,7 +137,7 @@ export const ROOMS = [
     status: "working",
     description: "마케팅 실험과 콘텐츠 기획, 채널별 발행 흐름을 함께 설계합니다.",
     actions: [
-      ["chat", "콘텐츠 논의", "태오 또는 하린과 바로 대화합니다."],
+      ["chat", "콘텐츠 논의", "성장 에이전트 또는 콘텐츠 에이전트와 바로 대화합니다."],
       ["tasks", "콘텐츠 캘린더", "기획·제작·발행 상태를 확인합니다."],
       ["files", "콘텐츠 자산", "카피와 제작물을 모아 봅니다."],
     ],
@@ -146,7 +146,7 @@ export const ROOMS = [
     id: "creative",
     label: "크리에이티브룸",
     subtitle: "제작과 품질",
-    profiles: ["greeming-doyun"],
+    profiles: ["hermes-creative"],
     x: 27,
     y: 60,
     w: 20,
@@ -154,7 +154,7 @@ export const ROOMS = [
     status: "approval",
     description: "디자인과 제작 결과물을 검토하고 고객에게 전달할 품질을 완성합니다.",
     actions: [
-      ["chat", "도윤에게 검토 요청", "산출물 QA와 제작 방향을 논의합니다."],
+      ["chat", "제작 에이전트에게 검토 요청", "산출물 QA와 제작 방향을 논의합니다."],
       ["files", "검토 대기", "승인이나 수정이 필요한 산출물을 봅니다."],
       ["tasks", "제작 현황", "진행 중인 크리에이티브 업무를 확인합니다."],
     ],
@@ -180,7 +180,7 @@ export const ROOMS = [
     id: "tech",
     label: "기술실",
     subtitle: "자동화와 개발",
-    profiles: ["greeming-jaehyun"],
+    profiles: ["hermes-technology"],
     x: 80,
     y: 42,
     w: 18,
@@ -188,7 +188,7 @@ export const ROOMS = [
     status: "working",
     description: "코드, 자동화, 데이터 구조와 보안 관련 작업을 설계하고 검증합니다.",
     actions: [
-      ["chat", "재현과 개발 논의", "구현과 보안 검토를 요청합니다."],
+      ["chat", "기술 에이전트와 개발 논의", "구현과 보안 검토를 요청합니다."],
       ["system", "자동화 상태", "연결된 서비스와 작업 상태를 봅니다."],
       ["sessions", "개발 세션", "기술 관련 최근 대화를 확인합니다."],
     ],
@@ -197,7 +197,7 @@ export const ROOMS = [
     id: "finance",
     label: "재무실",
     subtitle: "매출과 KPI",
-    profiles: ["greeming-junseo"],
+    profiles: ["hermes-finance"],
     x: 81,
     y: 62,
     w: 17,
@@ -205,7 +205,7 @@ export const ROOMS = [
     status: "online",
     description: "매출, 수익성, 전환율과 사업 의사결정에 필요한 숫자를 정리합니다.",
     actions: [
-      ["chat", "준서와 숫자 검토", "재무와 KPI 분석을 요청합니다."],
+      ["chat", "재무 에이전트와 숫자 검토", "재무와 KPI 분석을 요청합니다."],
       ["brief", "KPI 요약", "핵심 숫자와 변화 신호를 확인합니다."],
       ["files", "재무 자료", "관련 보고서와 기준 문서를 봅니다."],
     ],
@@ -220,10 +220,10 @@ export const ROOMS = [
     w: 20,
     h: 23,
     status: "approval",
-    description: "오늘의 우선순위, 승인 요청과 완료 보고를 대표님 기준으로 모아 보는 개인 공간입니다.",
+    description: "오늘의 우선순위, 승인 요청과 완료 보고를 사용자 기준으로 모아 보는 개인 공간입니다.",
     actions: [
       ["brief", "오늘의 브리핑", "오늘 확인해야 할 내용을 한 화면에 봅니다."],
-      ["tasks", "승인 대기", "대표님의 판단이 필요한 업무를 확인합니다."],
+      ["tasks", "승인 대기", "사용자의 판단이 필요한 업무를 확인합니다."],
       ["sessions", "내 최근 대화", "최근 작업 흐름을 이어갑니다."],
     ],
   },
@@ -231,7 +231,7 @@ export const ROOMS = [
     id: "customer",
     label: "고객 데스크",
     subtitle: "상담과 경험",
-    profiles: ["greeming-yuna"],
+    profiles: ["hermes-customer"],
     x: 63,
     y: 66,
     w: 18,
@@ -239,7 +239,7 @@ export const ROOMS = [
     status: "online",
     description: "고객 문의, 상담, 세일즈와 후기까지 고객 경험의 흐름을 관리합니다.",
     actions: [
-      ["chat", "유나와 상담 검토", "고객 응대와 세일즈 방향을 논의합니다."],
+      ["chat", "고객 에이전트와 상담 검토", "고객 응대와 세일즈 방향을 논의합니다."],
       ["tasks", "문의 현황", "응답과 후속 조치가 필요한 항목을 봅니다."],
       ["sessions", "고객 대화 기록", "고객 관련 최근 업무를 확인합니다."],
     ],
@@ -276,7 +276,7 @@ function profileDisplayName(profile, id) {
     const explicit = profile.display_name ?? profile.displayName ?? profile.label ?? profile.full_name ?? profile.fullName;
     if (String(explicit ?? "").trim()) return String(explicit).trim();
   }
-  const withoutNamespace = id.replace(/^greeming[-_.]?/i, "");
+  const withoutNamespace = id.replace(/^hermes[-_.]?/i, "");
   const words = withoutNamespace.split(/[-_.\s]+/).filter(Boolean);
   if (!words.length) return id || "Hermes Agent";
   return words

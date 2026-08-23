@@ -110,13 +110,28 @@ async function startOffice(t, upstreamPort, extraEnv = {}) {
       reject(new Error(`server exited (${code}): ${stderr.join("")}`));
     });
     child.stdout.on("data", (chunk) => {
-      const match = String(chunk).match(/Greeming Hermes Office listening on (\d+)/);
+      const match = String(chunk).match(/ listening on (\d+)/);
       if (!match) return;
       clearTimeout(timer);
       resolve(Number(match[1]));
     });
   });
 }
+
+test("login page uses the configured deployment brand and escapes it safely", async (t) => {
+  const upstream = http.createServer((_req, res) => res.writeHead(404).end());
+  const upstreamPort = await listen(upstream);
+  t.after(() => close(upstream));
+  const officePort = await startOffice(t, upstreamPort, {
+    OFFICE_BRAND_NAME: "Example & Partners Office",
+  });
+
+  const response = await request({ port: officePort, path: "/login" });
+  assert.equal(response.status, 200);
+  assert.match(response.body, /<title>Example &amp; Partners Office Login<\/title>/);
+  assert.match(response.body, /<h1>Example &amp; Partners Office<\/h1>/);
+  assert.doesNotMatch(response.body, /Example & Partners Office/);
+});
 
 test("agent calendar broker is bearer/profile protected without an Office browser session", async (t) => {
   const upstream = http.createServer((_req, res) => res.writeHead(404).end());
@@ -125,7 +140,7 @@ test("agent calendar broker is bearer/profile protected without an Office browse
   const token = "test-agent-calendar-read-token-32-bytes-minimum";
   const officePort = await startOffice(t, upstreamPort, {
     RESERVATION_AGENT_READ_TOKEN: token,
-    RESERVATION_AGENT_ALLOWED_PROFILES: "greeming-seoyun",
+    RESERVATION_AGENT_ALLOWED_PROFILES: "hermes-operations",
   });
 
   const missing = await request({ port: officePort, path: "/agent-api/calendar/events" });
@@ -133,13 +148,13 @@ test("agent calendar broker is bearer/profile protected without an Office browse
   const wrongProfile = await request({
     port: officePort,
     path: "/agent-api/calendar/events",
-    headers: { Authorization: `Bearer ${token}`, "X-Hermes-Agent-Profile": "greeming-jian" },
+    headers: { Authorization: `Bearer ${token}`, "X-Hermes-Agent-Profile": "hermes-brand" },
   });
   assert.equal(wrongProfile.status, 401);
   const authorized = await request({
     port: officePort,
     path: "/agent-api/calendar/events?limit=1",
-    headers: { Authorization: `Bearer ${token}`, "X-Hermes-Agent-Profile": "greeming-seoyun" },
+    headers: { Authorization: `Bearer ${token}`, "X-Hermes-Agent-Profile": "hermes-operations" },
   });
   assert.equal(authorized.status, 503);
   assert.equal(JSON.parse(authorized.body).error, "calendar temporarily unavailable");
@@ -278,10 +293,10 @@ test("dual login fails closed, reads identity back, relays cookies, and logs bot
   t.after(() => upstream.listening ? close(upstream) : undefined);
   const officePort = await startOffice(t, upstreamPort);
 
-  const alternateHost = await request({ port: officePort, path: "/login?next=%2Fchat", headers: { Host: "office.greeminghome.com" } });
+  const alternateHost = await request({ port: officePort, path: "/login?next=%2Fchat", headers: { Host: "office.example.com" } });
   assert.equal(alternateHost.status, 308);
   assert.equal(alternateHost.headers.location, "https://office.test/login?next=%2Fchat");
-  const wrongHostPost = await request({ port: officePort, method: "POST", path: "/login", headers: { Host: "office.greeminghome.com" } });
+  const wrongHostPost = await request({ port: officePort, method: "POST", path: "/login", headers: { Host: "office.example.com" } });
   assert.equal(wrongHostPost.status, 421);
   const malformedUpgrade = await rawRequest(officePort, "GET /hermes/api/ws HTTP/1.1\r\nHost: [\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n");
   assert.match(malformedUpgrade, /^HTTP\/1\.1 421 Misdirected Request/m);

@@ -1,7 +1,7 @@
 import { normalizeUiProfiles, normalizeUiSession, toHermesProfileId, toUiProfileId } from "./profileIds.js";
 
 const API_ROOT = "/hermes";
-const WORKSPACE_CACHE_KEY = "greeming-hermes-workspace-snapshot";
+const WORKSPACE_CACHE_KEY = "hermes-office-workspace-snapshot";
 
 const apiCache = new Map();
 const inflightRequests = new Map();
@@ -63,8 +63,8 @@ function clearApiCache() {
   inflightRequests.clear();
   try {
     Object.keys(window.localStorage)
-      .filter((key) => key.startsWith("greeming-hermes-profile-sessions:") ||
-        key.startsWith("greeming-hermes-session-messages:") ||
+      .filter((key) => key.startsWith("hermes-office-profile-sessions:") ||
+        key.startsWith("hermes-office-session-messages:") ||
         key === WORKSPACE_CACHE_KEY)
       .forEach((key) => window.localStorage.removeItem(key));
   } catch {
@@ -81,7 +81,7 @@ function clearSessionListCache() {
   });
   try {
     Object.keys(window.localStorage)
-      .filter((key) => key.startsWith("greeming-hermes-profile-sessions:") ||
+      .filter((key) => key.startsWith("hermes-office-profile-sessions:") ||
         key === WORKSPACE_CACHE_KEY)
       .forEach((key) => window.localStorage.removeItem(key));
   } catch {
@@ -299,7 +299,7 @@ export function decodeHermesText(value) {
 
 export function isMeetingSession(session) {
   const text = decodeHermesText(`${session.title ?? ""}\n${session.preview ?? ""}`);
-  return text.includes("[그리밍 AI 팀 회의") ||
+  return text.includes("[Hermes AI 팀 회의") ||
     text.includes("[회의 종합 및 종료]") ||
     text.includes("[미팅]");
 }
@@ -520,14 +520,14 @@ export async function loadProfileSessions(profile, limit = 30, { includeMeetings
     }))
     : sessions.filter((session) => !isArchivedSession(session, archivedSessions, profile));
   const result = includeMeetings ? visibleSessions : visibleSessions.filter((session) => !isMeetingSession(session));
-  const localKey = `greeming-hermes-profile-sessions:${query.toString()}:${includeMeetings ? "all" : "direct"}:${includeArchived ? "with-archive" : "active"}`;
+  const localKey = `hermes-office-profile-sessions:${query.toString()}:${includeMeetings ? "all" : "direct"}:${includeArchived ? "with-archive" : "active"}`;
   writeLocalCache(localKey, result);
   return result;
 }
 
 export async function loadSessionMessages(sessionId, profile) {
   const suffix = profileQuery(profile);
-  const localKey = `greeming-hermes-session-messages:${profile ?? "all"}:${sessionId}`;
+  const localKey = `hermes-office-session-messages:${profile ?? "all"}:${sessionId}`;
   const cached = readLocalCache(localKey, 60 * 1000);
   if (cached) return cached;
   const payload = await hermesFetch(

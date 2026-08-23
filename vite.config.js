@@ -11,6 +11,30 @@ import { randomUUID } from "node:crypto";
 const hermesTarget = "http://127.0.0.1:9119";
 const remoteFilesRoot = "/opt/data/home/hermes-chat-files";
 const maxFileSize = 100 * 1024 * 1024;
+const officeBrandName = String(process.env.VITE_OFFICE_BRAND_NAME || "Hermes Office").trim() || "Hermes Office";
+const officeBrandShortName = String(process.env.VITE_OFFICE_BRAND_SHORT_NAME || "Hermes").trim() || "Hermes";
+const officeBrandDescription = String(
+  process.env.VITE_OFFICE_BRAND_DESCRIPTION || "Self-hosted AI team workspace",
+).trim() || "Self-hosted AI team workspace";
+
+function htmlText(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function officeBrandHtml() {
+  return {
+    name: "office-brand-html",
+    transformIndexHtml(source) {
+      return source
+        .replaceAll("__OFFICE_BRAND_NAME__", htmlText(officeBrandName))
+        .replaceAll("__OFFICE_BRAND_DESCRIPTION__", htmlText(officeBrandDescription));
+    },
+  };
+}
 
 function safeSegment(value, fallback = "chat") {
   const cleaned = String(value ?? "")
@@ -216,6 +240,7 @@ function fileBridge() {
 export default defineConfig({
   plugins: [
     react(),
+    officeBrandHtml(),
     fileBridge(),
     VitePWA({
       registerType: "autoUpdate",
@@ -235,9 +260,9 @@ export default defineConfig({
         enabled: true,
       },
       manifest: {
-        name: "Greeming Hermes",
-        short_name: "Hermes",
-        description: "그리밍홈스튜디오 AI 팀 워크스페이스",
+        name: officeBrandName,
+        short_name: officeBrandShortName,
+        description: officeBrandDescription,
         theme_color: "#101b18",
         background_color: "#e7e0d3",
         display: "standalone",

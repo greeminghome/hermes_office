@@ -82,7 +82,7 @@ test("production server imports its runtime modules and denies internal routes b
       reject(new Error(`server exited before listening (${code}): ${stderr.join("")}`));
     });
     child.stdout.on("data", (chunk) => {
-      const match = String(chunk).match(/Greeming Hermes Office listening on (\d+)/);
+      const match = String(chunk).match(/Hermes Office listening on (\d+)/);
       if (!match) return;
       clearTimeout(timer);
       resolve(Number(match[1]));

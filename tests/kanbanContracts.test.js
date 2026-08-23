@@ -22,10 +22,10 @@ test("Office task metadata round-trips through the official body field", () => {
 });
 
 test("board normalization hides the versioned marker while preserving extension state", () => {
-  const body = joinOfficeTaskBody("설명", { collaborators: ["greeming-harin"] });
+  const body = joinOfficeTaskBody("설명", { collaborators: ["hermes-content"] });
   const board = normalizeOfficeBoard({ columns: [{ name: "todo", tasks: [{ id: "t1", body }] }] });
   assert.equal(board.columns[0].tasks[0].body, "설명");
-  assert.deepEqual(board.columns[0].tasks[0].metadata.collaborators, ["greeming-harin"]);
+  assert.deepEqual(board.columns[0].tasks[0].metadata.collaborators, ["hermes-content"]);
 });
 
 test("command center missions are derived only from official board tasks", () => {
@@ -34,7 +34,7 @@ test("command center missions are derived only from official board tasks", () =>
     checklist: [{ id: "step-1", text: "검수", done: true }],
   });
   const missions = officeMissionsFromBoard({
-    columns: [{ name: "running", tasks: [{ id: "t1", title: "공식 업무", assignee: "greeming-jaehyun", body }] }],
+    columns: [{ name: "running", tasks: [{ id: "t1", title: "공식 업무", assignee: "hermes-technology", body }] }],
   });
   assert.equal(missions.length, 1);
   assert.equal(missions[0].status, "working");
@@ -79,7 +79,7 @@ test("done metadata is sent only through the official completion handoff", () =>
   const metadata = { final_report_checked: true, status_note: "완료 검수" };
   const payload = officialTaskPatch({ body: "설명" }, { status: "done" }, metadata);
   assert.equal(payload.summary, "완료 검수");
-  assert.deepEqual(payload.metadata, { greeming_office: metadata });
+  assert.deepEqual(payload.metadata, { hermes_office: metadata });
   assert.equal(splitOfficeTaskBody(payload.body).metadata.final_report_checked, true);
 });
 
