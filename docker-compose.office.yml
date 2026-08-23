@@ -1,0 +1,109 @@
+name: "${COMPOSE_PROJECT_NAME:-hermes-office}"
+
+services:
+  hermes-office:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: "${HERMES_OFFICE_IMAGE:-hermes-office:local}"
+    restart: unless-stopped
+    init: true
+    user: "${HERMES_RUNTIME_UID:-1000}:${HERMES_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    environment:
+      PORT: "4173"
+      PUBLIC_ORIGIN: "${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      HERMES_TARGET: "${HERMES_TARGET:-http://host.docker.internal:9119}"
+      HERMES_AUTH_MODE: "${HERMES_AUTH_MODE:-official}"
+      HERMES_AUTH_PROVIDER: "${HERMES_AUTH_PROVIDER:-basic}"
+      HERMES_OFFICE_USER: "${HERMES_OFFICE_USER:-admin}"
+      HERMES_OFFICE_PASSWORD_HASH: "${HERMES_OFFICE_PASSWORD_HASH:?HERMES_OFFICE_PASSWORD_HASH is required}"
+      HERMES_OFFICE_SESSION_SECRET: "${HERMES_OFFICE_SESSION_SECRET:?HERMES_OFFICE_SESSION_SECRET is required}"
+      FILE_STORE_ROOT: "/data/chat-files"
+      AGENT_FILE_ROOT: "/data/chat-files"
+      DATA_ROOM_ROOTS: "/data/workspace:/data/google-drive-assets"
+      DATA_ROOM_MAX_FILES: "${DATA_ROOM_MAX_FILES:-10000}"
+      LIVE_SCREEN_CDP_URL: "${LIVE_SCREEN_CDP_URL:-}"
+      LIVE_SCREEN_PROFILE_CDP_URLS: "${LIVE_SCREEN_PROFILE_CDP_URLS:-}"
+      LIVE_SCREEN_ALLOWED_PROFILES: "${LIVE_SCREEN_ALLOWED_PROFILES:-default,greeming-doyun,greeming-harin,greeming-jaehyun,greeming-jian,greeming-junseo,greeming-minjun,greeming-seoyun,greeming-taeo,greeming-yuna}"
+      INSTAGRAM_BRIDGE_TARGET: "${INSTAGRAM_BRIDGE_TARGET:-}"
+      INSTAGRAM_BRIDGE_ADMIN_TOKEN: "${INSTAGRAM_BRIDGE_ADMIN_TOKEN:-}"
+      HERMES_GOOGLE_TOKEN_PATH: "${HERMES_GOOGLE_TOKEN_PATH:-/run/secrets/google_office_readonly_token.json}"
+      HERMES_GOOGLE_CLIENT_SECRET_PATH: "${HERMES_GOOGLE_CLIENT_SECRET_PATH:-/run/secrets/google_client_secret.json}"
+      GOOGLE_DRIVE_MIRROR_ROOT: "/data/google-drive-assets"
+      GOOGLE_DRIVE_SYNC_INTERVAL_MS: "${GOOGLE_DRIVE_SYNC_INTERVAL_MS:-300000}"
+      GOOGLE_DRIVE_SYNC_MAX_ITEMS: "${GOOGLE_DRIVE_SYNC_MAX_ITEMS:-5000}"
+      RESERVATION_DATA_ROOT: "/data/reservations"
+      RESERVATION_SOURCES_PATH: "${RESERVATION_SOURCES_PATH:-/run/secrets/reservation_sources.json}"
+      RESERVATION_GOOGLE_CLIENT_SECRET_PATH: "/data/reservations/google_reservation_client_secret.json"
+      RESERVATION_GOOGLE_TOKEN_PATH: "/data/reservations/google_reservation_oauth_token.json"
+      RESERVATION_GOOGLE_REDIRECT_URI: "${PUBLIC_ORIGIN}/bridge/reservations/google/callback"
+      RESERVATION_AGENT_READ_TOKEN: "${RESERVATION_AGENT_READ_TOKEN:?RESERVATION_AGENT_READ_TOKEN is required}"
+      RESERVATION_AGENT_ALLOWED_PROFILES: "${RESERVATION_AGENT_ALLOWED_PROFILES:-default,greeming-doyun,greeming-harin,greeming-jaehyun,greeming-jian,greeming-junseo,greeming-minjun,greeming-seoyun,greeming-taeo,greeming-yuna}"
+      RESERVATION_TIME_ZONE: "${RESERVATION_TIME_ZONE:-Asia/Seoul}"
+      RESERVATION_VENUE_ID: "${RESERVATION_VENUE_ID:-hermes-office}"
+      RESERVATION_VENUE_NAME: "${RESERVATION_VENUE_NAME:-Hermes Office}"
+      RESERVATION_RESOURCE_ID: "${RESERVATION_RESOURCE_ID:-main-space}"
+      RESERVATION_SYNC_ENABLED: "${RESERVATION_SYNC_ENABLED:-false}"
+      RESERVATION_WRITE_MODE: "${RESERVATION_WRITE_MODE:-shadow}"
+      RESERVATION_GOOGLE_WRITE_ENABLED: "${RESERVATION_GOOGLE_WRITE_ENABLED:-false}"
+      RESERVATION_HOURPLACE_FEED_ENABLED: "${RESERVATION_HOURPLACE_FEED_ENABLED:-false}"
+      RESERVATION_HOURPLACE_FEED_TOKEN: "${RESERVATION_HOURPLACE_FEED_TOKEN:-}"
+      RESERVATION_NAVER_AVAILABILITY_ENABLED: "${RESERVATION_NAVER_AVAILABILITY_ENABLED:-false}"
+      RESERVATION_SPACECLOUD_WRITE_ENABLED: "${RESERVATION_SPACECLOUD_WRITE_ENABLED:-false}"
+      RESERVATION_BROWSER_CDP_URL: "${RESERVATION_BROWSER_CDP_URL:-}"
+      RESERVATION_BROWSER_HEALTH_MS: "${RESERVATION_BROWSER_HEALTH_MS:-300000}"
+      RESERVATION_NAVER_BIZ_ID: "${RESERVATION_NAVER_BIZ_ID:-}"
+      RESERVATION_NAVER_PRODUCT_ID: "${RESERVATION_NAVER_PRODUCT_ID:-}"
+      RESERVATION_NAVER_PRODUCT_NAME: "${RESERVATION_NAVER_PRODUCT_NAME:-}"
+      RESERVATION_NAVER_MINIMUM_DURATION_MINUTES: "${RESERVATION_NAVER_MINIMUM_DURATION_MINUTES:-120}"
+      RESERVATION_SPACECLOUD_PRODUCT_ID: "${RESERVATION_SPACECLOUD_PRODUCT_ID:-}"
+      RESERVATION_SPACECLOUD_SPACE_ID: "${RESERVATION_SPACECLOUD_SPACE_ID:-}"
+      RESERVATION_GMAIL_INGEST_ENABLED: "${RESERVATION_GMAIL_INGEST_ENABLED:-false}"
+      RESERVATION_GMAIL_TOPIC: "${RESERVATION_GMAIL_TOPIC:-}"
+      RESERVATION_GMAIL_PUSH_AUDIENCE: "${RESERVATION_GMAIL_PUSH_AUDIENCE:-}"
+      RESERVATION_GMAIL_PUSH_SERVICE_ACCOUNT: "${RESERVATION_GMAIL_PUSH_SERVICE_ACCOUNT:-}"
+      RESERVATION_GMAIL_POLL_MS: "${RESERVATION_GMAIL_POLL_MS:-120000}"
+      RESERVATION_ICAL_POLL_MS: "${RESERVATION_ICAL_POLL_MS:-120000}"
+      RESERVATION_RECONCILE_MS: "${RESERVATION_RECONCILE_MS:-900000}"
+      RESERVATION_PENDING_BLOCKS: "${RESERVATION_PENDING_BLOCKS:-false}"
+      RESERVATION_BUFFER_BEFORE_MINUTES: "${RESERVATION_BUFFER_BEFORE_MINUTES:-0}"
+      RESERVATION_BUFFER_AFTER_MINUTES: "${RESERVATION_BUFFER_AFTER_MINUTES:-0}"
+      RESERVATION_TELEGRAM_ENABLED: "${RESERVATION_TELEGRAM_ENABLED:-false}"
+      RESERVATION_TELEGRAM_SECRET_PATH: "${RESERVATION_TELEGRAM_SECRET_PATH:-/run/secrets/telegram.json}"
+    ports:
+      - "${HERMES_OFFICE_BIND:-127.0.0.1}:${HERMES_OFFICE_PORT:-4173}:4173"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - office-chat-files:/data/chat-files
+      - office-workspace:/data/workspace
+      - office-google-drive:/data/google-drive-assets
+      - office-reservations:/data/reservations
+      - ./deploy/secrets:/run/secrets:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4173/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    stop_grace_period: 30s
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  office-chat-files:
+  office-workspace:
+  office-google-drive:
+  office-reservations:

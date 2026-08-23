@@ -1,0 +1,35 @@
+{
+  "name": "greeming-hermes-pwa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "check": "eslint .",
+    "test": "node --test tests/*.test.js",
+    "verify:package": "node deploy/scripts/verify-package.mjs",
+    "verify": "npm run check && npm test && npm run build && npm run verify:package"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "@xterm/addon-fit": "latest",
+    "@xterm/xterm": "latest",
+    "busboy": "^1.6.0",
+    "googleapis": "173.0.0",
+    "playwright-core": "1.58.0",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest",
+    "vite-plugin-pwa": "latest",
+    "ws": "8.21.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "globals": "latest"
+  }
+}

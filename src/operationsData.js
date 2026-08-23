@@ -1,0 +1,100 @@
+export const INITIAL_MISSIONS = [
+  {
+    id: "mission-brand",
+    title: "성대점 브랜드 운영체계 정리",
+    objective: "브랜드 기준 문서와 상품 소개서의 표현을 하나의 실행 기준으로 정리합니다.",
+    owner: "greeming-jian",
+    room: "brand",
+    status: "working",
+    progress: 68,
+    due: "오늘",
+    priority: "high",
+    steps: [
+      { id: "brand-1", label: "핵심 메시지 비교", done: true },
+      { id: "brand-2", label: "표현 충돌 검토", done: true },
+      { id: "brand-3", label: "운영 문구 반영", done: false },
+    ],
+  },
+  {
+    id: "mission-content",
+    title: "6월 콘텐츠 발행 계획",
+    objective: "채널별 콘텐츠 주제와 제작 순서를 확정하고 검토 대기 항목을 줄입니다.",
+    owner: "greeming-harin",
+    room: "content",
+    status: "approval",
+    progress: 82,
+    due: "6월 16일",
+    priority: "high",
+    steps: [
+      { id: "content-1", label: "주제 후보 수집", done: true },
+      { id: "content-2", label: "채널별 카피 작성", done: true },
+      { id: "content-3", label: "대표 승인", done: false },
+    ],
+  },
+  {
+    id: "mission-system",
+    title: "Hermes 운영 안정화",
+    objective: "대시보드 연결과 컨테이너 상태를 점검하고 재접속 흐름을 문서화합니다.",
+    owner: "greeming-jaehyun",
+    room: "tech",
+    status: "working",
+    progress: 54,
+    due: "6월 18일",
+    priority: "normal",
+    steps: [
+      { id: "system-1", label: "터널 연결 점검", done: true },
+      { id: "system-2", label: "재연결 시나리오 검증", done: false },
+      { id: "system-3", label: "운영 문서 작성", done: false },
+    ],
+  },
+  {
+    id: "mission-customer",
+    title: "고객 상담 응답 기준 개선",
+    objective: "반복 문의를 분류하고 상담 문구를 브랜드 톤에 맞게 개선합니다.",
+    owner: "greeming-yuna",
+    room: "customer",
+    status: "queued",
+    progress: 20,
+    due: "이번 주",
+    priority: "normal",
+    steps: [
+      { id: "customer-1", label: "반복 문의 분류", done: true },
+      { id: "customer-2", label: "응답 초안 작성", done: false },
+      { id: "customer-3", label: "상담팀 검토", done: false },
+    ],
+  },
+];
+
+export const INITIAL_APPROVALS = [
+  {
+    id: "approval-copy",
+    title: "인스타그램 캠페인 카피",
+    description: "발행 전 최종 문구와 CTA를 확인합니다.",
+    requester: "greeming-harin",
+    room: "content",
+    risk: "일반",
+  },
+  {
+    id: "approval-brand",
+    title: "브랜드 소개 문구 변경",
+    description: "상품 소개서 첫 화면의 핵심 문구를 교체합니다.",
+    requester: "greeming-jian",
+    room: "brand",
+    risk: "중요",
+  },
+  {
+    id: "approval-deploy",
+    title: "Hermes UI 배포 준비",
+    description: "검증 완료 후 새 PWA 빌드를 배포 대상으로 확정합니다.",
+    requester: "greeming-jaehyun",
+    room: "tech",
+    risk: "기술",
+  },
+];
+
+export const MISSION_STATUS = {
+  working: { label: "진행 중", tone: "working" },
+  approval: { label: "승인 대기", tone: "approval" },
+  queued: { label: "대기", tone: "queued" },
+  done: { label: "완료", tone: "done" },
+};

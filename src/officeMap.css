@@ -1,0 +1,705 @@
+/* Release contract for the interactive 2D office. Geometry and visuals share the same room model. */
+.command-office-shell {
+  --office-map-ratio: 1672 / 941;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: #eef2ee;
+}
+
+.command-office-workbench {
+  width: 100%;
+  min-height: 100%;
+}
+
+.floorplan-card {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #cbd4ce;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(29, 48, 40, .09);
+}
+
+.floorplan-stage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(8px, .8vw, 12px);
+  background: #dfe6e1;
+}
+
+.floorplan-building.isometric-office {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: var(--office-map-ratio);
+  overflow: hidden;
+  isolation: isolate;
+  border: 7px solid #263c34;
+  border-radius: 10px;
+  outline: 1px solid rgba(255, 255, 255, .72);
+  background: #e6ded0;
+  box-shadow: 0 18px 42px rgba(29, 45, 38, .18);
+  cursor: crosshair;
+}
+
+.floorplan-building.isometric-office::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(55, 68, 61, .055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(55, 68, 61, .055) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+
+.floorplan-building:focus-visible {
+  outline: 3px solid #2d7458;
+  outline-offset: -4px;
+}
+
+.office-floor-grid {
+  position: absolute;
+  z-index: 0;
+  inset: 1.2%;
+  border: 1px solid rgba(255, 255, 255, .74);
+  box-shadow: inset 0 0 0 1px rgba(52, 64, 58, .08);
+  pointer-events: none;
+}
+
+.office-floor-brand {
+  position: absolute;
+  z-index: 5;
+  left: 3.7%;
+  top: 32.8%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #58645f;
+  pointer-events: none;
+}
+
+.office-floor-brand span { font: 800 9px/1 "IBM Plex Mono", monospace; letter-spacing: 0; }
+.office-floor-brand small { color: #8a7060; font: 700 7px/1 "IBM Plex Mono", monospace; }
+
+.floorplan-corridor {
+  position: absolute;
+  z-index: 1;
+  display: block !important;
+  background: #d8d0c3;
+  box-shadow: inset 0 0 0 1px rgba(75, 78, 70, .08);
+  pointer-events: none;
+}
+
+.floorplan-corridor.horizontal { left: 2.8%; top: 32.8%; width: 94.2%; height: 12%; }
+.floorplan-corridor.vertical { top: 41.8%; height: 46%; }
+.floorplan-corridor.vertical.left { left: 17%; width: 8.2%; }
+.floorplan-corridor.vertical.right { left: 70.5%; width: 6.2%; }
+
+.floorplan-entrance {
+  position: absolute;
+  z-index: 3;
+  left: 43.2%;
+  top: 87.2%;
+  width: 10.6%;
+  height: 8%;
+  border: 2px solid #42554c;
+  border-bottom: 0;
+  background: #d8d0c3;
+  pointer-events: none;
+  display: block !important;
+}
+
+.floorplan-entrance::after {
+  content: "ENTRY";
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  color: #52625a;
+  font: 800 7px/1 "IBM Plex Mono", monospace;
+  letter-spacing: 0;
+  transform: translateX(-50%);
+}
+
+.floorplan-entrance i { display: none; }
+
+.floor-room {
+  position: absolute;
+  z-index: 4;
+  left: var(--zone-x);
+  top: var(--zone-y);
+  width: var(--zone-w);
+  height: var(--zone-h);
+  overflow: hidden;
+  border: 2px solid #43544c;
+  border-radius: 3px;
+  padding: 0;
+  color: #24352e;
+  background: var(--room-surface, #f4f1e9);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65);
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+
+.floorplan-building.isometric-office .floor-room {
+  z-index: 4;
+  overflow: hidden;
+  border: 2px solid #43544c !important;
+  border-radius: 3px;
+  color: #24352e;
+  background: var(--room-surface, #f4f1e9) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65) !important;
+}
+
+.floor-room.executive { --room-surface: #f5eadc; --room-accent: #c77b58; }
+.floor-room.meeting { --room-surface: #e7edf0; --room-accent: #668898; }
+.floor-room.operations { --room-surface: #e6efe9; --room-accent: #58816f; }
+.floor-room.control { --room-surface: #dde7e9; --room-accent: #4b7480; }
+.floor-room.brand { --room-surface: #f1e7e2; --room-accent: #b87569; }
+.floor-room.content { --room-surface: #eee8f0; --room-accent: #8e7188; }
+.floor-room.creative { --room-surface: #f4e7da; --room-accent: #c47a50; }
+.floor-room.library { --room-surface: #ebe6d9; --room-accent: #8e7e55; }
+.floor-room.customer { --room-surface: #e1ece8; --room-accent: #578477; }
+.floor-room.finance { --room-surface: #e7e9f0; --room-accent: #6d7698; }
+
+.floor-room::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--room-accent);
+  opacity: .9;
+}
+
+.floorplan-building.isometric-office .floor-room::before {
+  inset: 0 auto 0 0;
+  width: 4px;
+  border: 0;
+  border-radius: 0;
+  background: var(--room-accent) !important;
+  opacity: .9;
+}
+
+.floor-room:hover,
+.floor-room.focused {
+  z-index: 6;
+  border-color: #173f34;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .72), 0 0 0 3px rgba(42, 92, 72, .2);
+  filter: brightness(1.025);
+}
+
+.floorplan-building.isometric-office .floor-room:hover,
+.floorplan-building.isometric-office .floor-room.focused {
+  border-color: #173f34 !important;
+  background: var(--room-surface, #f4f1e9) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .72), 0 0 0 3px rgba(42, 92, 72, .2) !important;
+  filter: brightness(1.025);
+}
+
+.floor-room.focused::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #29664f;
+  box-shadow: 0 2px 5px rgba(27, 61, 48, .24);
+}
+
+.floor-room .door {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: -2px;
+  width: clamp(18px, 22%, 38px);
+  height: 5px;
+  border: 0;
+  background: #d8d0c3;
+  transform: translateX(-50%);
+}
+
+.floorplan-building.isometric-office .floor-room .door {
+  display: block !important;
+}
+
+.floor-room-label {
+  position: absolute;
+  z-index: 3;
+  left: 10px;
+  top: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+}
+
+.floorplan-building.isometric-office .floor-room .floor-room-label {
+  display: flex !important;
+  color: #24352e;
+}
+
+.floor-room-label strong {
+  overflow: hidden;
+  font-size: clamp(8px, .72vw, 11px);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floor-room-label small {
+  flex: 0 0 auto;
+  color: #6d7a73;
+  font: 700 clamp(6px, .48vw, 8px)/1 "IBM Plex Mono", monospace;
+}
+
+.room-furniture { position: absolute; z-index: 1; pointer-events: none; }
+.floorplan-building.isometric-office .floor-room .room-furniture { display: block; }
+.floorplan-building.isometric-office .floor-room .monitor-wall,
+.floorplan-building.isometric-office .floor-room .shelves { display: grid; }
+.room-furniture.desk,
+.room-furniture.workbench {
+  left: 50%;
+  top: 57%;
+  width: 48%;
+  height: 24%;
+  border: 1px solid #6f756e;
+  border-radius: 3px;
+  background: #bd9a73;
+  box-shadow: 0 3px 0 #947252;
+  transform: translate(-50%, -50%);
+}
+
+.room-furniture.desk i,
+.room-furniture.workbench i { display: block; position: absolute; background: #48544e; }
+.room-furniture.desk i:first-child,
+.room-furniture.workbench i:first-child { left: 14%; top: 20%; width: 30%; height: 42%; border-radius: 2px; }
+.room-furniture.desk i:last-child,
+.room-furniture.workbench i:last-child { right: 12%; bottom: -38%; width: 24%; height: 38%; border-radius: 50% 50% 3px 3px; }
+
+.room-furniture.meeting-table,
+.room-furniture.round-table {
+  left: 50%;
+  top: 58%;
+  width: 47%;
+  height: 42%;
+  border: 1px solid #68746e;
+  border-radius: 48%;
+  background: #b8a184;
+  box-shadow: 0 3px 0 #8f785f;
+  transform: translate(-50%, -50%);
+}
+
+.room-furniture.meeting-table i,
+.room-furniture.round-table i {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #5e6c65;
+  border-radius: 3px;
+  background: #708178;
+}
+.room-furniture.meeting-table i:nth-child(1), .room-furniture.round-table i:nth-child(1) { left: 46%; top: -12px; }
+.room-furniture.meeting-table i:nth-child(2), .room-furniture.round-table i:nth-child(2) { right: -12px; top: 42%; }
+.room-furniture.meeting-table i:nth-child(3), .room-furniture.round-table i:nth-child(3) { left: 46%; bottom: -12px; }
+.room-furniture.meeting-table i:nth-child(4), .room-furniture.round-table i:nth-child(4) { left: -12px; top: 42%; }
+
+.room-furniture.monitor-wall {
+  left: 14%;
+  right: 14%;
+  top: 43%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.room-furniture.monitor-wall i { height: clamp(12px, 2.1vw, 30px); border: 2px solid #44514b; border-radius: 2px; background: #547b84; box-shadow: inset 0 0 0 1px #91b5b9; }
+
+.room-furniture.shelves { left: 16%; right: 16%; top: 38%; display: grid; gap: 5px; }
+.room-furniture.shelves i { height: 6px; border: 1px solid #766b55; background: #a68b64; box-shadow: 0 2px 0 #7f6a4f; }
+
+.office-lounge {
+  position: absolute;
+  z-index: 2;
+  left: 27%;
+  top: 35.6%;
+  width: 20%;
+  height: 6%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.office-lounge i { width: 24%; height: 56%; border: 1px solid #657169; border-radius: 10px 10px 4px 4px; background: #91a399; }
+.office-lounge i:nth-child(2) { width: 16%; border-radius: 50%; background: #c6a778; }
+
+.office-plant { position: absolute; z-index: 3; width: 18px; height: 18px; border-radius: 50%; background: #9e7655; pointer-events: none; }
+.office-plant i { position: absolute; width: 7px; height: 13px; border-radius: 60% 10% 60% 10%; background: #50745c; transform-origin: 50% 100%; }
+.office-plant i:nth-child(1) { left: 6px; top: -8px; }
+.office-plant i:nth-child(2) { left: -1px; top: -5px; transform: rotate(-48deg); }
+.office-plant i:nth-child(3) { right: -1px; top: -5px; transform: rotate(48deg); }
+.office-plant.plant-a { left: 20.1%; top: 39.2%; }
+.office-plant.plant-b { left: 72.7%; top: 38.4%; }
+
+.isometric-office .floor-agent {
+  position: absolute;
+  z-index: 18;
+  left: var(--agent-x);
+  top: var(--agent-y);
+  min-width: 46px;
+  min-height: 46px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border: 0;
+  padding: 0;
+  color: #26372f;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.isometric-office .floor-agent b {
+  position: relative;
+  width: clamp(28px, 2.6vw, 40px);
+  height: clamp(28px, 2.6vw, 40px);
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--avatar);
+  box-shadow: 0 5px 11px rgba(35, 51, 43, .24);
+}
+
+.isometric-office .floor-agent b img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.isometric-office .floor-agent b i { position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border: 2px solid #fff; border-radius: 50%; background: #8b958f; }
+.isometric-office .floor-agent b i.online { background: #42a66f; }
+.isometric-office .floor-agent span { max-width: 72px; padding: 2px 5px; border-radius: 3px; color: #23372e; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 5px rgba(39, 52, 45, .12); font-size: clamp(7px, .58vw, 9px); font-weight: 800; line-height: 1.2; white-space: nowrap; }
+.isometric-office .floor-agent small { display: none; }
+.isometric-office .floor-agent:hover,
+.isometric-office .floor-agent.selected { z-index: 25; transform: translate(-50%, -50%) scale(1.09); }
+.isometric-office .floor-agent:hover small,
+.isometric-office .floor-agent.selected small { display: block; position: absolute; top: calc(100% + 3px); width: max-content; max-width: 110px; padding: 4px 6px; border-radius: 4px; color: #fff; background: #21362d; font-size: 7px; }
+.isometric-office .floor-agent.meeting b { box-shadow: 0 0 0 4px rgba(92, 126, 147, .26), 0 5px 11px rgba(35, 51, 43, .24); }
+
+.floor-user-marker {
+  position: absolute;
+  z-index: 30;
+  left: var(--user-x);
+  top: var(--user-y);
+  display: grid;
+  justify-items: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left .05s linear, top .05s linear;
+}
+
+.floor-user-marker::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #e56f4c;
+  box-shadow: 0 0 0 3px rgba(229, 111, 76, .26), 0 5px 10px rgba(69, 43, 34, .25);
+}
+.floor-user-marker span { margin-top: 3px; padding: 2px 5px; border-radius: 3px; color: #fff; background: #243a31; font-size: 7px; font-weight: 900; }
+.floor-user-marker strong { display: none; }
+
+.floor-meeting-roster { position: absolute; z-index: 24; left: var(--agent-x); top: var(--agent-y); transform: translate(-50%, -50%); }
+.floor-meeting-roster > summary { display: grid; width: 40px; height: 40px; place-items: center; border: 3px solid #fff; border-radius: 50%; color: #fff; background: #315d49; box-shadow: 0 6px 14px rgba(31, 75, 58, .28); font: 900 9px/1 "IBM Plex Mono", monospace; cursor: pointer; list-style: none; }
+.floor-meeting-roster > summary::-webkit-details-marker { display: none; }
+.floor-meeting-roster > div { position: absolute; left: 50%; top: calc(100% + 7px); width: 210px; max-height: 220px; overflow: auto; padding: 10px; border: 1px solid #cbd9d1; border-radius: 8px; background: #fff; box-shadow: 0 14px 30px rgba(34, 64, 52, .2); transform: translateX(-50%); }
+.floor-meeting-roster ul { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.floor-meeting-roster button { width: 100%; min-height: 30px; border: 0; border-radius: 5px; color: #365649; background: #edf3ef; text-align: left; }
+
+.isometric-office .floor-agent:focus-visible,
+.isometric-office .floor-room:focus-visible,
+.floorplan-building.isometric-office:focus-visible,
+.floor-meeting-roster > summary:focus-visible { outline: 3px solid #e87551; outline-offset: 3px; }
+
+@media (min-width: 700px) {
+  .command-office-workbench {
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    overflow: visible !important;
+    padding: clamp(12px, 1.25vw, 18px) !important;
+    background: transparent !important;
+  }
+  .command-office-main { height: auto !important; min-height: 0 !important; display: block !important; }
+  .floorplan-card { height: auto !important; align-self: start !important; }
+  .floorplan-stage { height: auto !important; }
+  .command-intervention-panel { width: 100%; height: auto !important; display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px; overflow: visible; }
+  .command-intervention-panel > section { min-height: 210px !important; max-height: 330px; }
+}
+
+@media (min-width: 1500px) {
+  .command-office-shell { overflow: hidden; }
+  .command-office-workbench { height: 100% !important; min-height: 0 !important; grid-template-columns: minmax(0, 1fr) clamp(300px, 20vw, 352px) !important; overflow: hidden !important; }
+  .command-office-main { height: 100% !important; display: grid !important; grid-template-rows: minmax(0, 1fr) !important; }
+  .floorplan-card { height: 100% !important; align-self: stretch !important; display: grid !important; }
+  .floorplan-stage { height: 100% !important; }
+  .floorplan-building.isometric-office { width: min(100%, calc((100dvh - 126px) * 1.777)); }
+  .command-intervention-panel { height: 100% !important; grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: repeat(3, minmax(0, 1fr)) !important; overflow: hidden; }
+  .command-intervention-panel > section { min-height: 0 !important; max-height: none; }
+}
+
+@media (min-width: 700px) and (max-width: 980px) {
+  .command-office-workbench { padding: 10px !important; }
+  .command-intervention-panel { grid-template-columns: minmax(0, 1fr) !important; }
+  .command-intervention-panel > section { min-height: 190px !important; }
+}
+
+@media (max-width: 699px) {
+  .floorplan-card { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-user-marker,
+  .isometric-office .floor-agent { transition: none; }
+}
+
+/* Open-plan top-down map v1. The raster is the visual source of truth; DOM
+   layers provide interaction, agents, and collision-aware movement only. */
+.command-office-shell {
+  --office-map-ratio: 3 / 2;
+  background: #f4f5f3;
+}
+
+.floorplan-card {
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #f4f5f3 !important;
+  box-shadow: none !important;
+}
+
+.floorplan-stage {
+  padding: 0 !important;
+  background: #f4f5f3 !important;
+}
+
+.floorplan-building.isometric-office {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: var(--office-map-ratio) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0;
+  background: #f4f5f3 !important;
+  box-shadow: none !important;
+  cursor: crosshair;
+}
+
+.floorplan-building.isometric-office::before,
+.floorplan-building.isometric-office::after {
+  display: none !important;
+}
+
+.floorplan-art {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.office-scene-map-canvas,
+.office-scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.office-scene-map-canvas {
+  z-index: 0;
+}
+
+.office-scene-canvas {
+  z-index: 1;
+}
+
+.floorplan-building.isometric-office .floor-agent.scene-hit-target {
+  z-index: 18;
+  width: clamp(30px, 2.8vw, 44px);
+  height: clamp(38px, 3.5vw, 54px);
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 45%;
+  padding: 0;
+  opacity: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: translate(-50%, -45%);
+}
+
+.floorplan-building.isometric-office .floor-agent.scene-hit-target:hover,
+.floorplan-building.isometric-office .floor-agent.scene-hit-target.selected {
+  z-index: 25;
+  opacity: 0;
+  transform: translate(-50%, -45%);
+}
+
+.floorplan-building.isometric-office .floor-agent.scene-hit-target:focus-visible {
+  opacity: 1;
+  outline: 3px solid #e87551;
+  outline-offset: 3px;
+  background: rgba(255, 255, 255, .32);
+}
+
+.floorplan-building.isometric-office .floor-room.map-zone {
+  z-index: 4;
+  overflow: visible;
+  border: 1px solid transparent !important;
+  border-radius: 2px;
+  color: transparent;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+  filter: none;
+}
+
+.floorplan-building.isometric-office .floor-room.map-zone::before,
+.floorplan-building.isometric-office .floor-room.map-zone::after {
+  display: none !important;
+}
+
+.floorplan-building.isometric-office .floor-room.map-zone:focus-visible {
+  border-color: rgba(35, 94, 70, .62) !important;
+  outline: 3px solid rgba(255, 255, 255, .94);
+  outline-offset: -4px;
+  background: rgba(64, 126, 99, .08) !important;
+}
+
+.floorplan-building.isometric-office:focus-visible {
+  outline: 3px solid #2d7458;
+  outline-offset: -3px;
+}
+
+@media (min-width: 700px) {
+  .command-office-workbench {
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  .command-office-main {
+    overflow: hidden;
+  }
+
+  .command-intervention-panel {
+    width: auto !important;
+    margin: 12px !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  .command-office-shell {
+    overflow: auto;
+  }
+
+  .command-office-workbench {
+    height: auto !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: visible !important;
+  }
+
+  .command-office-main {
+    height: auto !important;
+    display: block !important;
+  }
+
+  .floorplan-card,
+  .floorplan-stage {
+    height: auto !important;
+  }
+
+  .floorplan-building.isometric-office {
+    width: 100% !important;
+    max-height: none;
+  }
+
+  .command-intervention-panel {
+    width: auto !important;
+    height: auto !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+    margin: 12px !important;
+    overflow: visible;
+  }
+
+  .command-intervention-panel > section {
+    min-height: 210px !important;
+    max-height: 330px;
+  }
+}
+
+@media (min-width: 1700px) and (min-aspect-ratio: 17 / 10) {
+  .command-office-shell {
+    overflow: hidden;
+  }
+
+  .command-office-workbench {
+    height: 100% !important;
+    grid-template-columns: minmax(0, 1fr) 212px !important;
+    overflow: hidden !important;
+  }
+
+  .command-office-main {
+    height: 100% !important;
+    display: grid !important;
+    place-items: stretch;
+    background: #f4f5f3;
+  }
+
+  .floorplan-card,
+  .floorplan-stage {
+    height: 100% !important;
+  }
+
+  .floorplan-building.isometric-office {
+    width: min(100%, calc((100dvh - 88px) * 1.5)) !important;
+    max-height: 100%;
+  }
+
+  .command-intervention-panel {
+    height: 100% !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    margin: 8px 8px 8px 6px !important;
+    overflow: hidden;
+  }
+
+  .command-intervention-panel > section {
+    min-height: 0 !important;
+    max-height: none;
+    padding: 12px !important;
+  }
+
+  .command-intervention-panel button {
+    min-width: 0;
+  }
+}

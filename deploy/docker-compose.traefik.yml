@@ -1,0 +1,17 @@
+services:
+  hermes-office:
+    networks:
+      - default
+      - traefik
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "${TRAEFIK_NETWORK:?TRAEFIK_NETWORK is required}"
+      traefik.http.routers.hermes-office.rule: "Host(`${PUBLIC_ORIGIN_HOST:?PUBLIC_ORIGIN_HOST is required}`)"
+      traefik.http.routers.hermes-office.entrypoints: "websecure"
+      traefik.http.routers.hermes-office.tls.certresolver: "${TRAEFIK_CERT_RESOLVER:-letsencrypt}"
+      traefik.http.services.hermes-office.loadbalancer.server.port: "4173"
+
+networks:
+  traefik:
+    external: true
+    name: "${TRAEFIK_NETWORK:?TRAEFIK_NETWORK is required}"

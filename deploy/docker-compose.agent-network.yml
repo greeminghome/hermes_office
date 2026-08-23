@@ -1,0 +1,10 @@
+services:
+  hermes-office:
+    networks:
+      - default
+      - hermes-agent
+
+networks:
+  hermes-agent:
+    external: true
+    name: "${HERMES_AGENT_NETWORK:?HERMES_AGENT_NETWORK is required for this overlay}"
