@@ -23,7 +23,7 @@
     "react-dom": "latest",
     "vite": "latest",
     "vite-plugin-pwa": "latest",
-    "ws": "8.21.0"
+    "ws": "8.21.3"
   },
   "devDependencies": {
     "@eslint/js": "latest",
