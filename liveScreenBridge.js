@@ -41,6 +41,25 @@ export function liveScreenFallbackEndpoint(profile, profileMap, defaults = []) {
   return candidates.length === 1 ? candidates[0] : "";
 }
 
+export function liveScreenRegistryLookupUrl(registryUrl, profile) {
+  const base = normalizeLiveScreenCdpUrl(registryUrl);
+  if (!base || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(String(profile || ""))) return "";
+  const url = new URL(base);
+  url.pathname = `/profiles/${encodeURIComponent(profile)}`;
+  return url.toString();
+}
+
+export function liveScreenRegistryEndpoint(registryUrl, profile, payload = {}) {
+  if (String(payload?.profile || "") !== String(profile || "")) return "";
+  const port = Number(payload?.proxyPort);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return "";
+  const base = normalizeLiveScreenCdpUrl(registryUrl);
+  if (!base) return "";
+  const endpoint = new URL(base);
+  endpoint.port = String(port);
+  return normalizeLiveScreenCdpUrl(endpoint.toString());
+}
+
 function comparablePageUrl(value = "") {
   try {
     const url = new URL(value);

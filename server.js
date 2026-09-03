@@ -22,6 +22,8 @@ import {
   liveScreenFallbackEndpoint,
   normalizeLiveScreenCdpUrl,
   parseLiveScreenProfileMap,
+  liveScreenRegistryEndpoint,
+  liveScreenRegistryLookupUrl,
   selectLiveScreenFallbackPage,
 } from "./liveScreenBridge.js";
 import {
@@ -80,6 +82,9 @@ const hermesProxyTimeoutMs = Number(process.env.HERMES_PROXY_TIMEOUT_MS || 30000
 const liveScreenCacheTtlMs = Number(process.env.LIVE_SCREEN_CACHE_TTL_MS || 1200);
 const liveScreenTicketTtlMs = positiveInteger(process.env.LIVE_SCREEN_TICKET_TTL_MS, 15000);
 const liveScreenConnectionMaxMs = positiveInteger(process.env.LIVE_SCREEN_CONNECTION_MAX_MS, 15 * 60 * 1000);
+const liveScreenProfileRegistryUrl = normalizeLiveScreenCdpUrl(process.env.LIVE_SCREEN_PROFILE_REGISTRY_URL || "");
+const liveScreenDynamicProfiles = Boolean(liveScreenProfileRegistryUrl) && process.env.LIVE_SCREEN_DYNAMIC_PROFILES !== "false";
+const liveScreenProfileRegistryCacheTtlMs = positiveInteger(process.env.LIVE_SCREEN_PROFILE_REGISTRY_CACHE_TTL_MS, 10000);
 const loginRateWindowMs = positiveInteger(process.env.LOGIN_RATE_WINDOW_MS, 5 * 60 * 1000);
 const loginRateMaxPerKey = positiveInteger(process.env.LOGIN_RATE_MAX_PER_KEY, 5);
 const loginRateMaxPerIp = positiveInteger(process.env.LOGIN_RATE_MAX_PER_IP, 25);
@@ -91,6 +96,7 @@ const staticRoot = path.join(__dirname, "dist");
 const secureCookie = publicOrigin.startsWith("https://") || process.env.COOKIE_SECURE === "true";
 const dataRoomListCache = new Map();
 const liveScreenCache = new Map();
+const liveScreenProfileRegistryCache = new Map();
 const liveScreenAllowedProfiles = new Set(splitList(
   process.env.LIVE_SCREEN_ALLOWED_PROFILES || DEFAULT_TEAM_PROFILE_IDS.join(","),
 ));
@@ -371,12 +377,40 @@ function liveScreenProfileMap() {
   return parseLiveScreenProfileMap(process.env.LIVE_SCREEN_PROFILE_CDP_URLS || "");
 }
 
+async function resolvedLiveScreenProfileMap(profile) {
+  const profileMap = liveScreenProfileMap();
+  if (profileMap.has(profile) || profile === "default" || !liveScreenDynamicProfiles) return profileMap;
+  const cached = liveScreenProfileRegistryCache.get(profile);
+  if (cached?.expiresAt > Date.now()) {
+    profileMap.set(profile, cached.endpoint);
+    return profileMap;
+  }
+  const lookupUrl = liveScreenRegistryLookupUrl(liveScreenProfileRegistryUrl, profile);
+  if (!lookupUrl) return profileMap;
+  try {
+    const payload = await fetchJsonWithTimeout(lookupUrl, 1500);
+    const endpoint = liveScreenRegistryEndpoint(liveScreenProfileRegistryUrl, profile, payload);
+    if (endpoint) {
+      liveScreenProfileRegistryCache.set(profile, { endpoint, expiresAt: Date.now() + liveScreenProfileRegistryCacheTtlMs });
+      profileMap.set(profile, endpoint);
+    }
+  } catch {
+    liveScreenProfileRegistryCache.delete(profile);
+  }
+  return profileMap;
+}
+
 function visibleCdpPage(tab) {
   const url = String(tab?.url || "");
   if (tab?.type !== "page") return false;
   if (!/^https?:\/\//i.test(url)) return false;
   if (url.includes("chrome-devtools-frontend")) return false;
   return true;
+}
+
+function workspaceCdpPage(tab) {
+  const url = String(tab?.url || "");
+  return tab?.type === "page" && !url.includes("chrome-devtools-frontend");
 }
 
 function livePageActivity(page, source = "session-target") {
@@ -506,7 +540,7 @@ function liveWorkspacePayload(payload, pages) {
   const tabs = (Array.isArray(payload?.tabs) ? payload.tabs : [])
     .map((tab) => {
       const page = pageById.get(String(tab?.targetId || ""));
-      if (!page || !visibleCdpPage(page)) return null;
+      if (!page || !workspaceCdpPage(page)) return null;
       return {
         targetId: page.id,
         slot: Math.max(1, Number(tab.slot) || 1),
@@ -570,7 +604,7 @@ async function touchSessionLiveView(endpoint, browserSessionId) {
 
 async function disposeSessionLiveView(profile, browserSessionId) {
   if (!browserSessionId) return false;
-  const profileMap = liveScreenProfileMap();
+  const profileMap = await resolvedLiveScreenProfileMap(profile);
   const defaults = defaultLiveScreenCdpUrls();
   for (const endpoint of liveScreenEndpointCandidates(profile, profileMap, defaults)) {
     const query = new URLSearchParams({ session: browserSessionId });
@@ -600,7 +634,7 @@ async function handleLiveScreenBridge(request, response, url) {
   const urlHint = sanitizeLiveViewUrl(String(url.searchParams.get("url") || "").slice(0, 2048));
   const passive = url.searchParams.get("passive") === "1";
   try {
-    validateLiveScreenScope({ profile, sessionId, targetId, browserSessionId, allowedProfiles: liveScreenAllowedProfiles });
+    validateLiveScreenScope({ profile, sessionId, targetId, browserSessionId, allowedProfiles: liveScreenAllowedProfiles, allowDynamicProfiles: liveScreenDynamicProfiles });
   } catch {
     sendJson(response, 400, { error: "invalid live screen scope" });
     return;
@@ -622,7 +656,7 @@ async function handleLiveScreenBridge(request, response, url) {
     send(response, 204, "", { "Cache-Control": "no-store" });
     return;
   }
-  const profileMap = liveScreenProfileMap();
+  const profileMap = await resolvedLiveScreenProfileMap(profile);
   const defaults = defaultLiveScreenCdpUrls();
   const cacheKey = JSON.stringify({ profile, sessionId, browserSessionId, targetId, urlHint, passive, map: [...profileMap], defaults });
   const cached = liveScreenCache.get(cacheKey);

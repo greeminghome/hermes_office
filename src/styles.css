@@ -1505,6 +1505,8 @@
   background: #3a2d1b;
   box-shadow: inset 0 0 0 1px #e0ae5533;
 }
+.live-screen-tabs > button[aria-selected="true"] { outline: 2px solid transparent; outline-offset: 2px; }
+.live-screen-tabs > button:focus-visible { outline-color: #f0c66d; }
 .live-screen-tabs > button > i {
   position: absolute;
   top: 4px;
@@ -3007,6 +3009,10 @@ main { min-width: 0; }
 .chrome-relay-status button { min-width: 44px; min-height: 44px; margin-top: 9px; border: 1px solid #70849b; border-radius: 6px; color: #f3f6f8; background: #22334a; cursor: pointer; }
 .agent-live-empty { min-height: 260px; display: grid; place-items: center; align-content: center; gap: 7px; color: #dfe6ed; text-align: center; }
 .agent-live-empty strong { color: #f2d38d; font-size: 13px; }
+.agent-live-view.is-waiting { min-height: 0; grid-template-rows: auto auto minmax(0, 1fr); }
+.agent-live-view.is-waiting:is(.page, .modal, .chat, .dock):has(.live-screen-tabbar) { grid-template-rows: auto auto minmax(0, 1fr); }
+.agent-live-view.is-waiting:not(:has(.live-screen-tabbar)) { grid-template-rows: auto minmax(0, 1fr); }
+.agent-live-view.is-waiting .agent-live-empty { min-height: 0; height: 100%; padding: 20px; border: 1px solid #35465b; background: #080d15; }
 .live-screen-backdrop { position: fixed; inset: 0; z-index: 120; padding: 18px; background: #070b12e6; backdrop-filter: blur(4px); }
 .live-screen-modal { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; border: 3px solid #d2a24e; border-radius: 8px; color: #e8edf1; background: #101927; box-shadow: 0 25px 80px #000d; }
 .agent-live-view.modal, .agent-live-view.page { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 14px; }

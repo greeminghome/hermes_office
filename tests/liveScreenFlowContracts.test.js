@@ -42,8 +42,12 @@ test("Hermes browser routing isolates every durable chat session", async () => {
   assert.match(browserTool, /os\.replace\(temporary, path\)/);
   assert.match(browserTool, /"profileIndex": profile_index/);
   assert.match(browserTool, /def _browser_route_for_profile_index/);
-  assert.match(browserTool, /profiles\[profile_index\] != profile/);
-  assert.match(entrypoint, /HERMES_GATEWAY_PROFILES="\$\{profiles\}"/);
+  assert.match(browserTool, /def _runtime_profile_entries/);
+  assert.match(browserTool, /HERMES_PROFILE_RUNTIME_REGISTRY/);
+  assert.match(browserTool, /registered_index is None or registered_index != profile_index/);
+  assert.match(browserTool, /for profile, index in profile_entries/);
+  assert.match(entrypoint, /HERMES_GATEWAY_PROFILES="\$\{managed_profiles\}"/);
+  assert.match(entrypoint, /profile-runtime-registry\.cjs sync/);
   assert.match(entrypoint, /HERMES_PROFILE_CDP_BASE_PORT="\$\{profile_cdp_base\}"/);
   assert.match(browserTool, /persisted = _persisted_browser_session_route\(key\)/);
   assert.match(browserTool, /if persisted\[0\]:[\s\S]*?return persisted/);
@@ -82,10 +86,16 @@ test("browser targets propagate from chat into Office and retain the session ide
   assert.match(chat, /browserSessionId: payload\.browser_workspace_id \|\| current\.browserSessionId/);
   assert.match(chat, /browserSessionId: result\.info\?\.browser_workspace_id \|\| storedSessionId/);
   assert.match(chat, /browserRequested: false,[\s\S]*?browserSessionId: sessionId/);
-  assert.match(chat, /payload\?\.activity\?\.view\?\.viewerSocketUrl[\s\S]*?payload\?\.workspace\?\.tabs\?\.length/);
+  assert.match(chat, /if \(stopped \|\| !payload\?\.workspace\?\.tabs\?\.length\) return/);
+  assert.match(chat, /const hasViewer = Boolean\(payload\?\.activity\?\.view\?\.viewerSocketUrl\)/);
+  assert.match(chat, /liveSurfaceAvailable = liveViewAvailable \|\| liveWorkspaceAvailable/);
+  assert.match(chat, /window\.setTimeout\(discoverRestoredWorkspace, 5000\)/);
   assert.match(gateway, /"browser_workspace_id": str\(/);
   assert.match(gateway, /resolve_browser_workspace_id\(key\) or key/);
   assert.match(gateway, /return _session_info\(agent, session\)/);
+  assert.match(gateway, /HERMES_PROFILE_RUNTIME_REGISTRY/);
+  assert.match(gateway, /if index is None:\s*\n\s*return "", ""/);
+  assert.doesNotMatch(gateway, /if name not in profiles:\s*\n\s*return _profile_browser_route\(None\)/);
 });
 
 test("Office resolves the selected profile through the passive Live Screen bridge", async () => {
@@ -116,13 +126,18 @@ test("Live Screen frame and input flow keeps explicit CDP evidence", async () =>
   assert.match(live, /sendControl\("Input\.insertText"/);
   assert.match(live, /const controlSocketRef = useRef/);
   assert.match(live, /void connectControl\(\)/);
+  assert.match(live, /const view = targetMatchesSelection \? activity\?\.view : null/);
+  assert.match(live, /setActivity\(payload\?\.activity\?\.view\?\.viewerSocketUrl \? payload\.activity : null\)/);
+  assert.match(live, /if \(sessionId\) return undefined/);
+  assert.match(live, /tabIndex=\{selected \? 0 : -1\}/);
+  assert.match(live, /\["ArrowLeft", "ArrowRight", "Home", "End"\]/);
 });
 
 test("mobile chat exposes the Live launcher for a restored workspace", async () => {
   const chat = await source("ProfileChat.jsx");
 
   assert.match(chat, /window\.matchMedia\("\(max-width: 900px\)"\)/);
-  assert.match(chat, /\(compact \|\| narrowViewport\) && liveViewAvailable/);
+  assert.match(chat, /\(compact \|\| narrowViewport\) && liveSurfaceAvailable/);
 });
 
 test("browser lifecycle closes 24-hour idle pages, recreates them, and fully disposes ended sessions", async () => {
@@ -146,7 +161,22 @@ test("browser lifecycle closes 24-hour idle pages, recreates them, and fully dis
   assert.match(browserTool, /def release_browser_session\(task_id: str\)/);
   assert.match(browserTool, /requests\.delete\(/);
   assert.match(gateway, /release_browser_session\(key\)/);
+  assert.match(gateway, /if end_reason in \{"tui_close", "session_delete", "archived"\}:/);
   assert.match(gateway, /release_browser_session\(target\)/);
   assert.match(server, /const browserDisposed = await disposeSessionLiveView\(profile, sessionId\)/);
   assert.match(server, /onActivity: \(\) => touchSessionLiveView\(grant\.endpoint, grant\.sessionId\)/);
+});
+
+test("new Hermes profiles remain visible and resolve through the internal runtime registry", async () => {
+  const [chat, server, compose] = await Promise.all([
+    source("ProfileChat.jsx"),
+    readFile(new URL("../server.js", import.meta.url), "utf8"),
+    readFile(new URL("../docker-compose.office.yml", import.meta.url), "utf8"),
+  ]);
+  assert.match(chat, /orderedProfileNames\(profiles, PROFILE_ORDER\)/);
+  assert.match(chat, /setActiveProfile\(resolvedInitialProfile\);\s*\n\s*\}, \[resolvedInitialProfile\]\)/);
+  assert.doesNotMatch(chat, /\}, \[availableProfiles, initialProfile\]\)/);
+  assert.match(server, /resolvedLiveScreenProfileMap/);
+  assert.match(server, /allowDynamicProfiles: liveScreenDynamicProfiles/);
+  assert.match(compose, /LIVE_SCREEN_PROFILE_REGISTRY_URL/);
 });

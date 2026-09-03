@@ -454,10 +454,14 @@ def _teardown_session(session: dict | None, *, end_reason: str = "tui_close") ->
     except Exception:
         pass
     try:
-        if key := session.get("session_key"):
-            from tools.browser_tool import release_browser_session
+        # A transport disappearing does not mean the durable workspace ended.
+        # Preserve tabs/cookies through refresh, orphan reaping and shutdown;
+        # the browser router applies its independent idle/context TTL policy.
+        if end_reason in {"tui_close", "session_delete", "archived"}:
+            if key := session.get("session_key"):
+                from tools.browser_tool import release_browser_session
 
-            release_browser_session(key)
+                release_browser_session(key)
     except Exception as exc:
         logger.warning("Could not release browser resources for ended session %s: %s", session.get("session_key"), exc)
     try:
@@ -703,14 +707,50 @@ def _profile_browser_route(profile: str | None) -> tuple[str, str]:
         proxy_port = int(os.environ.get("HERMES_BROWSER_CDP_PROXY_PORT") or 9223)
         return f"http://127.0.0.1:{cdp_port}", f"http://127.0.0.1:{proxy_port}"
 
-    profiles = [
+    configured = [
         item.strip()
         for item in os.environ.get("HERMES_GATEWAY_PROFILES", "").split(",")
-        if item.strip()
+        if re.fullmatch(r"[a-z0-9][a-z0-9-]{1,63}", item.strip())
     ]
-    if name not in profiles:
-        return _profile_browser_route(None)
-    index = profiles.index(name)
+    entries = [(candidate, index) for index, candidate in enumerate(dict.fromkeys(configured))]
+    registry_path = Path(
+        os.environ.get("HERMES_PROFILE_RUNTIME_REGISTRY")
+        or "/opt/data/browser-profile-runtime.json"
+    )
+    try:
+        payload = json.loads(registry_path.read_text(encoding="utf-8"))
+        raw_entries = payload.get("profiles") if isinstance(payload, dict) else None
+        registered = []
+        names = set()
+        indexes = set()
+        if isinstance(raw_entries, list):
+            for item in raw_entries:
+                candidate = str(item.get("profile") or "").strip() if isinstance(item, dict) else ""
+                index = item.get("index") if isinstance(item, dict) else None
+                if (
+                    not isinstance(item, dict)
+                    or item.get("active") is not True
+                    or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,63}", candidate)
+                    or not isinstance(index, int)
+                    or isinstance(index, bool)
+                    or not 0 <= index < 64
+                    or candidate in names
+                    or index in indexes
+                ):
+                    continue
+                registered.append((candidate, index))
+                names.add(candidate)
+                indexes.add(index)
+            entries = registered
+        else:
+            entries = []
+    except FileNotFoundError:
+        pass
+    except (OSError, ValueError, TypeError):
+        entries = []
+    index = next((slot for candidate, slot in entries if candidate == name), None)
+    if index is None:
+        return "", ""
     cdp_port = int(os.environ.get("HERMES_PROFILE_CDP_BASE_PORT") or 9300) + index
     proxy_port = int(os.environ.get("HERMES_PROFILE_CDP_PROXY_BASE_PORT") or 9400) + index
     return f"http://127.0.0.1:{cdp_port}", f"http://127.0.0.1:{proxy_port}"
@@ -748,7 +788,7 @@ def _session_browser_profile(session: dict) -> str | None:
     if not profile_home:
         return None
     # A profile home is set only by profile-aware create/resume. The route
-    # resolver below still validates the basename against HERMES_GATEWAY_PROFILES.
+    # resolver below still validates the basename against the runtime registry.
     return Path(profile_home).name or None
 
 

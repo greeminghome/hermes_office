@@ -79,19 +79,79 @@ _browser_routes_by_session = {}
 _browser_routes_lock = threading.RLock()
 _browser_profile_routes_by_session = {}
 _browser_workspaces_by_session = {}
+_profile_name_pattern = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
 
 
-def _browser_route_for_profile(profile: str) -> tuple[str, str]:
-    """Return a route only for an explicitly configured profile name."""
-    name = str(profile or "").strip()
+def _configured_runtime_profile_entries() -> list[tuple[str, int]]:
+    """Return the static profile order as a startup-safe registry fallback."""
     profiles = [
         item.strip()
         for item in os.environ.get("HERMES_GATEWAY_PROFILES", "").split(",")
-        if item.strip()
+        if _profile_name_pattern.fullmatch(item.strip())
     ]
-    if not name or name not in profiles:
+    return [(profile, index) for index, profile in enumerate(dict.fromkeys(profiles))]
+
+
+def _runtime_profile_entries() -> list[tuple[str, int]]:
+    """Read active profile slots from the atomically-written runtime registry.
+
+    Existing deployments can start before the registry is first written, so
+    configured profiles remain a narrow fallback. Dynamic names never receive
+    a default-browser route when the registry cannot validate them.
+    """
+    fallback = _configured_runtime_profile_entries()
+    registry_path = Path(
+        os.environ.get("HERMES_PROFILE_RUNTIME_REGISTRY")
+        or "/opt/data/browser-profile-runtime.json"
+    )
+    try:
+        payload = json.loads(registry_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return fallback
+    except (OSError, ValueError, TypeError):
+        return []
+    raw_entries = payload.get("profiles") if isinstance(payload, dict) else None
+    if not isinstance(raw_entries, list):
+        return []
+
+    entries = []
+    names = set()
+    indexes = set()
+    for item in raw_entries:
+        if not isinstance(item, dict) or item.get("active") is not True:
+            continue
+        profile = str(item.get("profile") or "").strip()
+        index = item.get("index")
+        if (
+            not _profile_name_pattern.fullmatch(profile)
+            or not isinstance(index, int)
+            or isinstance(index, bool)
+            or not 0 <= index < 64
+            or profile in names
+            or index in indexes
+        ):
+            continue
+        entries.append((profile, index))
+        names.add(profile)
+        indexes.add(index)
+    return sorted(entries, key=lambda entry: entry[1])
+
+
+def _runtime_profile_index(profile: str) -> Optional[int]:
+    name = str(profile or "").strip()
+    for candidate, index in _runtime_profile_entries():
+        if candidate == name:
+            return index
+    return None
+
+
+def _browser_route_for_profile(profile: str) -> tuple[str, str]:
+    """Return a route only for a profile with an active runtime slot."""
+    name = str(profile or "").strip()
+    profile_index = _runtime_profile_index(name)
+    if not name or profile_index is None:
         return "", ""
-    return _browser_route_for_profile_index(profiles.index(name))
+    return _browser_route_for_profile_index(profile_index)
 
 
 def _browser_route_for_profile_index(index: int) -> tuple[str, str]:
@@ -184,15 +244,12 @@ def register_browser_session_profile(session_key: str, profile: str) -> tuple[st
     key = str(session_key or "").strip()
     name = str(profile or "").strip()
     route = _browser_route_for_profile(name)
-    if not key or not route:
+    if not key or not route[0]:
         return "", ""
     path = _browser_session_owner_path(key)
-    profiles = [
-        item.strip()
-        for item in os.environ.get("HERMES_GATEWAY_PROFILES", "").split(",")
-        if item.strip()
-    ]
-    profile_index = profiles.index(name)
+    profile_index = _runtime_profile_index(name)
+    if profile_index is None:
+        return "", ""
     payload = json.dumps(
         {"sessionKey": key, "profile": name, "profileIndex": profile_index},
         ensure_ascii=True,
@@ -249,14 +306,8 @@ def _persisted_browser_session_route(session_key: str) -> tuple[str, str]:
     profile_index = payload.get("profileIndex")
     if not profile or not isinstance(profile_index, int) or isinstance(profile_index, bool):
         return "", ""
-    profiles = [
-        item.strip()
-        for item in os.environ.get("HERMES_GATEWAY_PROFILES", "").split(",")
-        if item.strip()
-    ]
-    if profiles and (
-        profile_index >= len(profiles) or profiles[profile_index] != profile
-    ):
+    registered_index = _runtime_profile_index(profile)
+    if registered_index is None or registered_index != profile_index:
         return "", ""
     return _browser_route_for_profile_index(profile_index)
 
@@ -344,12 +395,8 @@ def _profile_browser_route_for_session(task_id: Optional[str] = None) -> tuple[s
             _browser_profile_routes_by_session[key] = persisted
         return persisted
 
-    profiles = [
-        item.strip()
-        for item in os.environ.get("HERMES_GATEWAY_PROFILES", "").split(",")
-        if item.strip()
-    ]
-    if not profiles:
+    profile_entries = _runtime_profile_entries()
+    if not profile_entries:
         return "", ""
 
     matches = []
@@ -359,7 +406,7 @@ def _profile_browser_route_for_session(task_id: Optional[str] = None) -> tuple[s
         logger.debug("Profile browser route lookup unavailable for %s: %s", key, exc)
         return "", ""
 
-    for index, profile in enumerate(profiles):
+    for profile, index in profile_entries:
         try:
             db_path = Path(profiles_mod.get_profile_dir(profile)) / "state.db"
             if not db_path.is_file():

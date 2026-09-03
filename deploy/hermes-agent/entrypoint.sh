@@ -2,11 +2,14 @@
 set -eu
 
 mkdir -p /opt/data/home /opt/data/logs/profiles /opt/data/browser-profiles /workspace
-chown -R hermes:hermes /opt/data /workspace
+if [[ "${1:-}" != "--supervisor" ]]; then
+  chown -R hermes:hermes /opt/data /workspace
+fi
 
 profiles="${HERMES_GATEWAY_PROFILES:-}"
 profile_cdp_base="${HERMES_PROFILE_CDP_BASE_PORT:-9300}"
 profile_proxy_base="${HERMES_PROFILE_CDP_PROXY_BASE_PORT:-9400}"
+profile_registry_port="${HERMES_PROFILE_REGISTRY_PORT:-9299}"
 
 valid_profile() {
   [[ "$1" =~ '^[a-z0-9][a-z0-9-]{1,63}$' ]]
@@ -41,11 +44,12 @@ start_profile_gateway() {
   local profile="$1"
   local cdp_port="$2"
   local proxy_port="$3"
+  local managed_profiles="${4:-$profiles}"
   if pgrep -f -- "hermes (-p|--profile) ${profile} gateway run" >/dev/null 2>&1; then
     return
   fi
   gosu hermes env HERMES_HOME=/opt/data HOME=/opt/data/home \
-    HERMES_GATEWAY_PROFILES="${profiles}" HERMES_PROFILE_CDP_BASE_PORT="${profile_cdp_base}" \
+    HERMES_GATEWAY_PROFILES="${managed_profiles}" HERMES_PROFILE_CDP_BASE_PORT="${profile_cdp_base}" \
     HERMES_PROFILE_CDP_PROXY_BASE_PORT="${profile_proxy_base}" \
     BROWSER_CDP_URL="http://127.0.0.1:${cdp_port}" HERMES_BROWSER_SESSION_ROUTER="http://127.0.0.1:${proxy_port}" \
     BROWSER_INACTIVITY_TIMEOUT="${BROWSER_INACTIVITY_TIMEOUT:-1800}" \
@@ -67,18 +71,39 @@ start_dashboard() {
       >>/opt/data/logs/dashboard.log 2>&1 </dev/null &
 }
 
+start_profile_registry() {
+  if pgrep -f -- "profile-runtime-registry.cjs serve" >/dev/null 2>&1; then
+    return
+  fi
+  gosu hermes env HERMES_HOME=/opt/data HOME=/opt/data/home \
+    HERMES_PROFILE_REGISTRY_PORT="$profile_registry_port" \
+    HERMES_PROFILE_RUNTIME_REGISTRY="${HERMES_PROFILE_RUNTIME_REGISTRY:-/opt/data/browser-profile-runtime.json}" \
+    nohup node /usr/local/bin/profile-runtime-registry.cjs serve \
+      >>/opt/data/logs/profile-runtime-registry.log 2>&1 </dev/null &
+}
+
+managed_profile_rows() {
+  gosu hermes env HERMES_HOME=/opt/data HOME=/opt/data/home \
+    HERMES_GATEWAY_PROFILES="$profiles" \
+    HERMES_PROFILE_CDP_BASE_PORT="$profile_cdp_base" \
+    HERMES_PROFILE_CDP_PROXY_BASE_PORT="$profile_proxy_base" \
+    HERMES_PROFILE_DISCOVERY_ROOT="${HERMES_PROFILE_DISCOVERY_ROOT:-/opt/data/profiles}" \
+    HERMES_PROFILE_RUNTIME_REGISTRY="${HERMES_PROFILE_RUNTIME_REGISTRY:-/opt/data/browser-profile-runtime.json}" \
+    node /usr/local/bin/profile-runtime-registry.cjs sync
+}
+
 ensure_services() {
   start_browser_and_proxy default "${HERMES_BROWSER_CDP_PORT:-9222}" "${HERMES_BROWSER_CDP_PROXY_PORT:-9223}"
-  local index=0
-  local profile
-  for profile in ${(s:,:)profiles}; do
+  start_profile_registry
+  local rows="$(managed_profile_rows)"
+  local active_profiles="$(print -r -- "$rows" | cut -f1 | paste -sd, -)"
+  local profile index cdp_port proxy_port
+  while IFS=$'\t' read -r profile index cdp_port proxy_port; do
     [[ -n "$profile" ]] || continue
     valid_profile "$profile" || { print -u2 "Invalid Hermes profile: $profile"; exit 1; }
-    (( index < 50 )) || { print -u2 "At most 50 managed profiles are supported"; exit 1; }
-    start_browser_and_proxy "$profile" "$((profile_cdp_base + index))" "$((profile_proxy_base + index))"
-    start_profile_gateway "$profile" "$((profile_cdp_base + index))" "$((profile_proxy_base + index))"
-    index=$((index + 1))
-  done
+    start_browser_and_proxy "$profile" "$cdp_port" "$proxy_port"
+    start_profile_gateway "$profile" "$cdp_port" "$proxy_port" "$active_profiles"
+  done <<< "$rows"
   if [[ -z "$profiles" ]] && ! pgrep -f -- "hermes gateway run" >/dev/null 2>&1; then
     gosu hermes env HERMES_HOME=/opt/data HOME=/opt/data/home \
       BROWSER_CDP_URL="http://127.0.0.1:${HERMES_BROWSER_CDP_PORT:-9222}" \

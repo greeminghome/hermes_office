@@ -124,6 +124,10 @@ test("Live Screen source keeps secure heartbeat recovery, low-latency input and 
   assert.match(component, /className="agent-live-location"/);
   assert.match(component, /className="agent-live-help"/);
   assert.match(component, /className="chrome-relay-presence"/);
+  assert.match(component, /if \(!tabs\.length\) return null/);
+  assert.doesNotMatch(component, /tabs\.length < 2/);
+  assert.match(component, /선택된 탭 하나만 표시됩니다/);
+  assert.match(component, /<LiveScreenTabs workspace=\{workspace\}/);
   assert.match(component, /aria-busy=\{!isLive\}/);
   assert.match(component, /statusRef\.current !== "live"/);
   assert.match(styles, /\.live-screen-modal:fullscreen/);

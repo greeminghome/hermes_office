@@ -21,6 +21,7 @@ const requiredFiles = [
   "deploy/docker-compose.traefik.yml",
   "deploy/hermes-agent/Dockerfile",
   "deploy/hermes-agent/LICENSE.hermes-agent",
+  "deploy/hermes-agent/profile-runtime-registry.cjs",
   "deploy/hermes-agent/overrides/cdp-http-proxy.js",
   "deploy/reservation_sources.example.json",
   "deploy/scripts/backup.sh",
@@ -32,6 +33,7 @@ const requiredFiles = [
   "docs/HANDOFF_CHECKLIST.md",
   "scripts/hermes_calendar_mcp.py",
   "src/branding.js",
+  "src/profilePresentation.js",
   "src/storageMigration.js",
   "SECURITY.md",
 ];

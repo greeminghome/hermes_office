@@ -5,6 +5,8 @@ import {
   liveScreenFallbackEndpoint,
   normalizeLiveScreenCdpUrl,
   parseLiveScreenProfileMap,
+  liveScreenRegistryEndpoint,
+  liveScreenRegistryLookupUrl,
   selectLiveScreenFallbackPage,
 } from "../liveScreenBridge.js";
 
@@ -22,6 +24,15 @@ test("profile-mapped Live Screen routes fail closed instead of falling back acro
 test("CDP URLs are normalized and unsupported schemes are rejected", () => {
   assert.equal(normalizeLiveScreenCdpUrl("ws://agent:9223/devtools/browser?id=1"), "http://agent:9223");
   assert.equal(normalizeLiveScreenCdpUrl("file:///tmp/chrome"), "");
+});
+
+test("dynamic profile registry lookup stays on the internal host and validates the returned identity", () => {
+  const registry = "http://hermes-agent:9299";
+  assert.equal(liveScreenRegistryLookupUrl(registry, "team-new"), "http://hermes-agent:9299/profiles/team-new");
+  assert.equal(liveScreenRegistryLookupUrl(registry, "../escape"), "");
+  assert.equal(liveScreenRegistryEndpoint(registry, "team-new", { profile: "team-new", proxyPort: 9412 }), "http://hermes-agent:9412");
+  assert.equal(liveScreenRegistryEndpoint(registry, "team-new", { profile: "team-other", proxyPort: 9412 }), "");
+  assert.equal(liveScreenRegistryEndpoint(registry, "team-new", { profile: "team-new", proxyPort: 70000 }), "");
 });
 
 test("current-tab fallback remains inside one isolated profile endpoint", () => {

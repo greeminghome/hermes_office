@@ -106,10 +106,15 @@ Docker 내부 endpoint를 사용합니다.
 ```dotenv
 LIVE_SCREEN_CDP_URL=http://hermes-agent:9223
 LIVE_SCREEN_PROFILE_CDP_URLS=profile-a=http://hermes-agent:9400,profile-b=http://hermes-agent:9401
+LIVE_SCREEN_PROFILE_REGISTRY_URL=http://hermes-agent:9299
+LIVE_SCREEN_DYNAMIC_PROFILES=true
 ```
 
 모든 프로필은 독립 browser context와 고정 session ID를 가져야 합니다. 프로필
 저장소 또는 쿠키 디렉터리를 수령자에게 복사하지 말고 각 서비스에서 다시 로그인합니다.
+동적 프로필을 사용할 때는 Agent 호환 이미지의 `HERMES_PROFILE_DISCOVERY_ROOT`가
+실제 Hermes 프로필 디렉터리를 가리켜야 합니다. 레지스트리 포트는 사설 Docker
+네트워크에서만 접근하게 하고 인터넷에 게시하지 않습니다.
 
 ## 7. HTTPS와 Traefik
 

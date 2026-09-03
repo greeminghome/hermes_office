@@ -20,6 +20,7 @@ import { mergeActivityView } from "./activityView.js";
 import HermesPrompt from "./HermesPrompt.jsx";
 import { publishLiveActivity, readLiveActivity } from "./liveScreenState.js";
 import { TEAM_META } from "./officeData.js";
+import { orderedProfileNames, profileDisplayMeta } from "./profilePresentation.js";
 import { extractClipboardImageFiles, readClipboardImageFiles } from "./composerClipboard.js";
 import { hitlResponseRequest, isHitlRequestExpired, normalizeHitlRequest, sessionBranchRequest } from "./officialContracts.js";
 import { useModalFocus } from "./useModalFocus.js";
@@ -651,11 +652,11 @@ export default function ProfileChat({
   }, []);
 
   const availableProfiles = useMemo(() => {
-    const names = new Set(profiles.map((profile) => profile.name));
-    return PROFILE_ORDER.filter((name) => names.size === 0 || names.has(name));
+    return orderedProfileNames(profiles, PROFILE_ORDER);
   }, [profiles]);
+  const resolvedInitialProfile = availableProfiles.includes(initialProfile) ? initialProfile : (availableProfiles[0] || "default");
   const thread = threads[activeProfile] ?? emptyThread();
-  const meta = TEAM_META[activeProfile] ?? TEAM_META.default;
+  const meta = profileDisplayMeta(activeProfile, profiles, TEAM_META);
   const activeSessionId = thread.liveSessionId || thread.storedSessionId || "";
   // The browser router is keyed by the durable Hermes session. During a tool
   // run the gateway also emits a short-lived transport session id; preferring
@@ -668,6 +669,8 @@ export default function ProfileChat({
   const selectedLiveTargetId = liveSelection.followAgent ? (liveWorkspace?.activeTargetId || "") : liveSelection.targetId;
   const livePanelRequested = Boolean(activeSessionId && thread.browserRequested && !dismissedLiveSessions[activeLiveKey]);
   const liveViewAvailable = Boolean(livePanelRequested && activeActivity.view?.viewerSocketUrl);
+  const liveWorkspaceAvailable = Boolean(livePanelRequested && liveWorkspace?.tabs?.length);
+  const liveSurfaceAvailable = liveViewAvailable || liveWorkspaceAvailable;
   const liveConnectionState = liveConnectionStates[activeLiveKey] ?? "searching";
   const profileSessions = useMemo(
     () => (sessionLists[activeProfile] ?? []).filter((session) => !isHiddenSession(session, hiddenSessions, activeProfile)),
@@ -774,6 +777,7 @@ export default function ProfileChat({
             publishLiveActivity(activeProfile, payload.activity, thread.storedSessionId);
           }
         } else if (!stopped) {
+          setLiveActivities((current) => ({ ...current, [activeLiveKey]: null }));
           setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: payload?.status === "workspace-inactive" ? "waiting" : "searching" }));
         }
       } catch {
@@ -861,21 +865,32 @@ export default function ProfileChat({
     }
     if (!thread.storedSessionId) return undefined;
     let stopped = false;
-    loadLiveScreen(activeProfile, liveBrowserScopeId, "", "", liveBrowserScopeId, true)
-      .then((payload) => {
-        if (stopped || !payload?.activity?.view?.viewerSocketUrl || !payload?.workspace?.tabs?.length) return;
-        setLiveActivities((current) => ({ ...current, [activeLiveKey]: payload.activity }));
+    let timer = 0;
+    const discoverRestoredWorkspace = async () => {
+      try {
+        const payload = await loadLiveScreen(activeProfile, liveBrowserScopeId, "", "", liveBrowserScopeId, true);
+        if (stopped || !payload?.workspace?.tabs?.length) return;
         setLiveWorkspaces((current) => ({ ...current, [activeLiveKey]: payload.workspace }));
-        setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: "live" }));
-        publishLiveActivity(activeProfile, payload.activity, activeSessionId);
+        const hasViewer = Boolean(payload?.activity?.view?.viewerSocketUrl);
+        if (hasViewer) {
+          setLiveActivities((current) => ({ ...current, [activeLiveKey]: payload.activity }));
+          publishLiveActivity(activeProfile, payload.activity, activeSessionId);
+        }
+        setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: hasViewer ? "live" : "searching" }));
         updateThread(activeProfile, (current) => ({
           ...current,
           browserRequested: true,
           browserSessionId: payload.workspace.id || current.browserSessionId || current.storedSessionId,
         }));
-      })
-      .catch(() => {});
-    return () => { stopped = true; };
+      } catch {
+        // A slow router or a server-started browser must be discoverable later,
+        // without requiring another chat message or a manual page refresh.
+      } finally {
+        if (!stopped) timer = window.setTimeout(discoverRestoredWorkspace, 5000);
+      }
+    };
+    void discoverRestoredWorkspace();
+    return () => { stopped = true; window.clearTimeout(timer); };
   }, [activeLiveKey, activeProfile, activeSessionId, liveBrowserScopeId, thread.browserRequested, thread.storedSessionId, updateThread]);
 
   const resumeStoredSession = useCallback((profileName, storedSessionId) => {
@@ -1080,8 +1095,8 @@ export default function ProfileChat({
   }, [activeProfile, newConversation]);
 
   useEffect(() => {
-    if (TEAM_META[initialProfile]) setActiveProfile(initialProfile);
-  }, [initialProfile]);
+    setActiveProfile(resolvedInitialProfile);
+  }, [resolvedInitialProfile]);
 
   useEffect(() => {
     if (window.localStorage.getItem(HIDDEN_SESSIONS_MIGRATED_KEY) === "1") return;
@@ -1128,7 +1143,7 @@ export default function ProfileChat({
   }, [initialDraft]);
 
   useEffect(() => {
-    const profileName = TEAM_META[initialProfile] ? initialProfile : "default";
+    const profileName = resolvedInitialProfile;
     refreshSessions(profileName).then((sessions) => {
       const requested = initialSessionId || readSelection()[profileName];
       const existing = sessions.some((session) => session.id === requested) ? requested : "";
@@ -1137,7 +1152,7 @@ export default function ProfileChat({
         if (initialSessionId) setMobileStage("chat");
       }
     }).catch((error) => updateThread(profileName, (current) => requestFailureThread(current, error)));
-  }, [initialProfile, initialSessionId, openStoredSession, refreshSessions, updateThread]);
+  }, [resolvedInitialProfile, initialSessionId, openStoredSession, refreshSessions, updateThread]);
 
   useEffect(() => {
     if (!branchFrom) {
@@ -1146,7 +1161,7 @@ export default function ProfileChat({
     }
     if (connection !== "open" || branchAttemptRef.current === branchFrom) return;
     branchAttemptRef.current = branchFrom;
-    const profileName = TEAM_META[branchFrom.profile] ? branchFrom.profile : "default";
+    const profileName = availableProfiles.includes(branchFrom.profile) ? branchFrom.profile : (availableProfiles[0] || "default");
     let cancelled = false;
     (async () => {
       setActiveProfile(profileName);
@@ -1189,7 +1204,7 @@ export default function ProfileChat({
     return () => {
       cancelled = true;
     };
-  }, [branchFrom, connection, onBranchHandled, openStoredSession, refreshSessions, resumeStoredSession, updateThread]);
+  }, [availableProfiles, branchFrom, connection, onBranchHandled, openStoredSession, refreshSessions, resumeStoredSession, updateThread]);
 
   useEffect(() => {
     if (sessionLists[activeProfile]) return;
@@ -1853,7 +1868,7 @@ export default function ProfileChat({
               </header>
               <div className="mobile-chat-people">
                 {availableProfiles.map((profileName) => {
-                  const member = TEAM_META[profileName];
+                  const member = profileDisplayMeta(profileName, profiles, TEAM_META);
                   const profile = profiles.find((item) => item.name === profileName);
                   const memberThread = threads[profileName];
                   const unreadCount = unreadCountForProfile(profileName);
@@ -1910,7 +1925,7 @@ export default function ProfileChat({
       {!compact && <aside className="profile-chat-roster">
         <header><span>DIRECT MESSAGES</span><strong>AI 구성원</strong></header>
         {availableProfiles.map((profileName) => {
-          const member = TEAM_META[profileName];
+          const member = profileDisplayMeta(profileName, profiles, TEAM_META);
           const profile = profiles.find((item) => item.name === profileName);
           const memberThread = threads[profileName];
           const unreadCount = unreadCountForProfile(profileName);
@@ -1945,7 +1960,7 @@ export default function ProfileChat({
           <span className="profile-chat-hero" style={{ "--avatar": meta.color }}>{meta.initials}</span>
           <div><small>{meta.role}</small><h3>{meta.name}과 대화</h3></div>
           <span className={`chat-connection ${connection}`}><i /> {connection === "open" ? "실시간 연결" : "연결 확인 중"}</span>
-          {(compact || narrowViewport) && liveViewAvailable && <button type="button" className="chat-live-open-button" onClick={() => setFullscreenLive(true)}>Live</button>}
+          {(compact || narrowViewport) && liveSurfaceAvailable && <button type="button" className="chat-live-open-button" onClick={() => setFullscreenLive(true)}>Live</button>}
           {!compact && <button type="button" className="chat-mark-read-button" onClick={markActiveSessionRead}>읽음 처리</button>}
           {!compact && <button type="button" className="chat-reset-button" onClick={() => resetConversation(activeProfile)}>초기화</button>}
         </header>
@@ -2028,7 +2043,7 @@ export default function ProfileChat({
       </section>
       {livePanelRequested && !compact && !fullscreenLive && (
         <aside className="chat-live-panel">
-          {liveViewAvailable ? (
+          {liveSurfaceAvailable ? (
             <LiveScreenPanel
               activity={activeActivity}
               workspace={liveWorkspace}
@@ -2053,7 +2068,7 @@ export default function ProfileChat({
           )}
         </aside>
       )}
-      {fullscreenLive && liveViewAvailable && (
+      {fullscreenLive && liveSurfaceAvailable && (
         <LiveScreenModal
           activity={activeActivity}
           workspace={liveWorkspace}

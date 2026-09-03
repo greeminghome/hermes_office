@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { LIVE_ACTIVITY_KEY, LIVE_CHANNEL, liveViewerUrl, readLiveActivity } from "./liveScreenState.js";
 import { liveScreenStreamKey, subscribeLiveScreenStream } from "./liveScreenHub.js";
 import { TEAM_META } from "./officeData.js";
+import { profileDisplayMeta } from "./profilePresentation.js";
 import { loadLiveScreen } from "./hermes.js";
 import { useModalFocus } from "./useModalFocus.js";
 import {
@@ -695,7 +696,7 @@ function LiveScreenTabs({ workspace, selectedTargetId, followAgent = true, onSel
     if (!followAgent || !activeTargetId) return;
     stripRef.current?.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [activeTargetId, followAgent, tabs.length]);
-  if (tabs.length < 2) return null;
+  if (!tabs.length) return null;
   const userPinnedAway = !followAgent && selectedTargetId && selectedTargetId !== activeTargetId;
   return (
     <div className="live-screen-tabbar">
@@ -710,9 +711,20 @@ function LiveScreenTabs({ workspace, selectedTargetId, followAgent = true, onSel
               data-target-id={tab.targetId}
               className={`${selected ? "selected" : ""} ${tab.targetId === activeTargetId ? "agent-active" : ""}`.trim()}
               aria-selected={selected}
+              tabIndex={selected ? 0 : -1}
               aria-label={`브라우저 탭 ${tab.slot}: ${tab.title || tab.url || "페이지"}`}
               title={tab.title || tab.url || `탭 ${tab.slot}`}
               onClick={() => onSelectTarget?.(tab.targetId)}
+              onKeyDown={(event) => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const index = tabs.findIndex((candidate) => candidate.targetId === tab.targetId);
+                const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+                const nextTarget = tabs[nextIndex]?.targetId;
+                if (!nextTarget) return;
+                onSelectTarget?.(nextTarget);
+                stripRef.current?.querySelector(`[data-target-id="${CSS.escape(nextTarget)}"]`)?.focus();
+              }}
             >
               <span>{tab.slot}</span>
               {tab.targetId === activeTargetId && <i aria-label="구성원이 사용 중" />}
@@ -726,14 +738,30 @@ function LiveScreenTabs({ workspace, selectedTargetId, followAgent = true, onSel
 }
 
 export function LiveScreenPanel({ activity, workspace = null, selectedTargetId = "", followAgent = true, onSelectTarget, onFollowAgent, profileName = "", sessionId = "", variant = "panel", onFullscreen, fullscreenLabel = "전체 화면", onClose, headingId }) {
-  const view = activity?.view;
-  const meta = TEAM_META[profileName] ?? TEAM_META.default;
+  const requestedTargetId = String(selectedTargetId || workspace?.activeTargetId || "");
+  const activityTargetId = String(activity?.view?.targetId || activity?.view?.pageId || "");
+  const targetMatchesSelection = !requestedTargetId || activityTargetId === requestedTargetId;
+  const view = targetMatchesSelection ? activity?.view : null;
+  const meta = profileDisplayMeta(profileName, [], TEAM_META);
   if (!view?.viewerSocketUrl) {
+    const hasWorkspace = Boolean(workspace?.tabs?.length);
     return (
-      <div className={`agent-live-empty ${variant}`} role="status">
-        <span>LIVE BROWSER</span>
-        <strong>공유 중인 화면이 없습니다.</strong>
-        <p>에이전트가 브라우저 작업을 시작하면 이 화면에 자동으로 표시됩니다.</p>
+      <div className={`agent-live-view ${variant} is-waiting`} role="status">
+        <header>
+          <span className="console-avatar" style={{ "--avatar": meta.color }}>{meta.initials}</span>
+          <div>
+            <span>LIVE BROWSER</span>
+            <strong id={headingId}>{meta.name}의 브라우저 작업공간</strong>
+            <small>{sessionId ? "이 대화 세션 전용" : "구성원 전용"}</small>
+          </div>
+          {onClose && <nav className="agent-live-actions" aria-label="Live Browser 화면 작업"><button type="button" aria-label="Live Screen 닫기" title="닫기" onClick={onClose}><span aria-hidden="true">×</span>닫기</button></nav>}
+        </header>
+        <LiveScreenTabs workspace={workspace} selectedTargetId={selectedTargetId} followAgent={followAgent} onSelectTarget={onSelectTarget} onFollowAgent={onFollowAgent} />
+        <div className={`agent-live-empty ${variant}`}>
+          <span>{hasWorkspace ? "WORKSPACE READY" : "WORKSPACE WAITING"}</span>
+          <strong>{hasWorkspace ? "선택한 탭의 첫 화면을 기다리는 중입니다." : "브라우저 작업공간을 기다리고 있습니다."}</strong>
+          <p>{hasWorkspace ? "탭 번호를 선택할 수 있으며 화면이 준비되면 선택된 탭 하나만 표시됩니다." : "에이전트가 브라우저를 사용하면 이 세션 전용 작업공간이 자동으로 생성됩니다."}</p>
+        </div>
       </div>
     );
   }
@@ -860,8 +888,13 @@ export default function AgentLivePage() {
     const syncDirectViewer = async () => {
       try {
         const payload = await loadLiveScreen(profileName, sessionId, selection.followAgent ? "" : selection.targetId, "", sessionId, true);
-        if (!stopped && payload?.workspace) setWorkspace(payload.workspace);
-        if (!stopped && payload?.activity?.view?.viewerSocketUrl) setActivity(payload.activity);
+        if (!stopped) {
+          setWorkspace(payload?.workspace || null);
+          setActivity(payload?.activity?.view?.viewerSocketUrl ? payload.activity : null);
+          if (payload?.workspace && !selection.followAgent && !payload.workspace.tabs?.some((tab) => tab.targetId === selection.targetId)) {
+            setSelection({ followAgent: true, targetId: "" });
+          }
+        }
       } catch {
         // Preserve the last good frame while the managed browser session recovers.
       } finally {
@@ -876,6 +909,9 @@ export default function AgentLivePage() {
   }, [profileName, selection.followAgent, selection.targetId, sessionId]);
 
   useEffect(() => {
+    // A session-scoped viewer owns its selection; broadcasts from another
+    // window must not replace a manually pinned tab.
+    if (sessionId) return undefined;
     const channel = new BroadcastChannel(LIVE_CHANNEL);
     const onMessage = (event) => {
       if (event.data?.profileName === profileName && (event.data?.sessionId || "") === sessionId) setActivity(event.data.activity);

@@ -14,6 +14,7 @@ RUN apt-get update \
 
 COPY entrypoint.sh /usr/local/bin/hermes-office-agent-entrypoint.sh
 COPY start-persistent-browser.sh /usr/local/bin/start-persistent-browser.sh
+COPY profile-runtime-registry.cjs /usr/local/bin/profile-runtime-registry.cjs
 COPY overrides/cdp-http-proxy.js /usr/local/bin/cdp-http-proxy.js
 COPY overrides/browser_tool.py /opt/hermes/tools/browser_tool.py
 COPY overrides/tui_gateway_server.py /opt/hermes/tui_gateway/server.py
@@ -28,6 +29,7 @@ RUN python3 /tmp/patch-browser-cdp-route.py \
 RUN chmod 0755 \
       /usr/local/bin/hermes-office-agent-entrypoint.sh \
       /usr/local/bin/start-persistent-browser.sh \
+      /usr/local/bin/profile-runtime-registry.cjs \
       /usr/local/bin/cdp-http-proxy.js \
       /usr/local/bin/audit-browser-profile-isolation.mjs \
       /usr/local/bin/audit-browser-session-ownership.py

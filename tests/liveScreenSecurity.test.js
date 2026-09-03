@@ -43,6 +43,8 @@ test("Live Screen Origin and scope checks fail closed", () => {
     profile: "hermes-operations", sessionId: "chat-1", targetId: "page.1", browserSessionId: "browser:1", allowedProfiles,
   }), { profile: "hermes-operations", sessionId: "chat-1", targetId: "page.1", browserSessionId: "browser:1" });
   assert.throws(() => validateLiveScreenScope({ profile: "default", sessionId: "chat-1", allowedProfiles }));
+  assert.equal(validateLiveScreenScope({ profile: "team-new", sessionId: "chat-1", allowedProfiles, allowDynamicProfiles: true }).profile, "team-new");
+  assert.throws(() => validateLiveScreenScope({ profile: "../team", sessionId: "chat-1", allowedProfiles, allowDynamicProfiles: true }));
   assert.throws(() => validateLiveScreenScope({ profile: "hermes-operations", sessionId: "../chat", allowedProfiles }));
   assert.throws(() => validateLiveScreenScope({ profile: "hermes-operations", sessionId: "chat", browserSessionId: "x".repeat(257), allowedProfiles }));
 });

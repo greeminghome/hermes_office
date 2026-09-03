@@ -46,8 +46,8 @@ export function liveScreenOriginMatches(request, canonicalOrigin = null) {
   }
 }
 
-export function validateLiveScreenScope({ profile, sessionId, targetId = "", browserSessionId = "", allowedProfiles }) {
-  if (!PROFILE_PATTERN.test(profile) || !allowedProfiles.has(profile)) throw new Error("profile is not allowed");
+export function validateLiveScreenScope({ profile, sessionId, targetId = "", browserSessionId = "", allowedProfiles, allowDynamicProfiles = false }) {
+  if (!PROFILE_PATTERN.test(profile) || (!allowedProfiles.has(profile) && !allowDynamicProfiles)) throw new Error("profile is not allowed");
   if (!IDENTIFIER_PATTERN.test(sessionId)) throw new Error("invalid sessionId");
   if (targetId && !IDENTIFIER_PATTERN.test(targetId)) throw new Error("invalid targetId");
   if (browserSessionId && !IDENTIFIER_PATTERN.test(browserSessionId)) throw new Error("invalid browserSessionId");

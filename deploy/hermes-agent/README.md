@@ -26,10 +26,18 @@ browser profile 또는 config/token 파일을 복사하지 마세요.
 HERMES_GATEWAY_PROFILES=profile-a,profile-b
 HERMES_PROFILE_CDP_BASE_PORT=9300
 HERMES_PROFILE_CDP_PROXY_BASE_PORT=9400
+HERMES_PROFILE_REGISTRY_PORT=9299
+HERMES_PROFILE_DISCOVERY_ROOT=/opt/data/profiles
 CDP_PROXY_SESSION_TTL_MS=86400000
 CDP_PROXY_SESSION_CONTEXT_TTL_MS=2592000000
 CDP_PROXY_MAX_SESSION_CONTEXTS=12
 ```
+
+기존 프로필의 포트 슬롯은 `/opt/data/browser-profile-runtime.json`에 영구 보존됩니다.
+이후 `HERMES_PROFILE_DISCOVERY_ROOT/<profile-id>`에 추가된 유효한 Hermes 프로필은
+감독 루프가 자동으로 발견하고, 빈 CDP/라우터 슬롯을 한 번만 배정한 뒤 전용 Chrome과
+Gateway를 기동합니다. Office는 내부 레지스트리(기본 포트 `9299`)로 새 프로필의
+라우터를 조회하므로 정적 Live Screen 매핑을 다시 작성하지 않아도 됩니다.
 
 `overrides/browser_tool.py`와 `overrides/tui_gateway_server.py`는 MIT 라이선스의
 Nous Research Hermes Agent를 수정한 파일입니다. 원 라이선스는
