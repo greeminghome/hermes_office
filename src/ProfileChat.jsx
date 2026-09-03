@@ -610,10 +610,15 @@ export default function ProfileChat({
   const [connection, setConnection] = useState("connecting");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [mobileStage, setMobileStage] = useState("people");
+  const [narrowViewport, setNarrowViewport] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches
+  ));
   const [readState, setReadState] = useState(readReadState);
   const [hiddenSessions, setHiddenSessions] = useState(readHiddenSessions);
   const [liveActivities, setLiveActivities] = useState({});
   const [liveConnectionStates, setLiveConnectionStates] = useState({});
+  const [liveWorkspaces, setLiveWorkspaces] = useState({});
+  const [liveSelections, setLiveSelections] = useState({});
   const [dismissedLiveSessions, setDismissedLiveSessions] = useState({});
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
   const [snippetsOpen, setSnippetsOpen] = useState(false);
@@ -637,6 +642,14 @@ export default function ProfileChat({
   const urlDialogRef = useModalFocus(urlOpen, () => setUrlOpen(false));
   const snippetsDialogRef = useModalFocus(snippetsOpen, () => setSnippetsOpen(false));
 
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const sync = () => setNarrowViewport(media.matches);
+    sync();
+    media.addEventListener?.("change", sync);
+    return () => media.removeEventListener?.("change", sync);
+  }, []);
+
   const availableProfiles = useMemo(() => {
     const names = new Set(profiles.map((profile) => profile.name));
     return PROFILE_ORDER.filter((name) => names.size === 0 || names.has(name));
@@ -647,10 +660,13 @@ export default function ProfileChat({
   // The browser router is keyed by the durable Hermes session. During a tool
   // run the gateway also emits a short-lived transport session id; preferring
   // that id leaves Live Browser polling a target that can never exist.
-  const liveBrowserScopeId = thread.storedSessionId || thread.browserSessionId || "";
+  const liveBrowserScopeId = thread.browserSessionId || thread.storedSessionId || "";
   const activeLiveKey = `${activeProfile}:${activeSessionId}`;
   const activeActivity = liveActivities[activeLiveKey] ?? activities[activeProfile] ?? {};
-  const livePanelRequested = !compact && Boolean(activeSessionId && thread.browserRequested && !dismissedLiveSessions[activeLiveKey]);
+  const liveWorkspace = liveWorkspaces[activeLiveKey] ?? null;
+  const liveSelection = liveSelections[activeLiveKey] ?? { followAgent: true, targetId: "" };
+  const selectedLiveTargetId = liveSelection.followAgent ? (liveWorkspace?.activeTargetId || "") : liveSelection.targetId;
+  const livePanelRequested = Boolean(activeSessionId && thread.browserRequested && !dismissedLiveSessions[activeLiveKey]);
   const liveViewAvailable = Boolean(livePanelRequested && activeActivity.view?.viewerSocketUrl);
   const liveConnectionState = liveConnectionStates[activeLiveKey] ?? "searching";
   const profileSessions = useMemo(
@@ -658,6 +674,13 @@ export default function ProfileChat({
     [activeProfile, hiddenSessions, sessionLists],
   );
   const [fullscreenLive, setFullscreenLive] = useState(false);
+  const selectLiveTarget = useCallback((targetId) => {
+    if (!targetId) return;
+    setLiveSelections((current) => ({ ...current, [activeLiveKey]: { followAgent: false, targetId } }));
+  }, [activeLiveKey]);
+  const followAgentLiveTarget = useCallback(() => {
+    setLiveSelections((current) => ({ ...current, [activeLiveKey]: { followAgent: true, targetId: "" } }));
+  }, [activeLiveKey]);
 
   const updateThread = useCallback((profileName, updater) => {
     setThreads((current) => {
@@ -718,14 +741,14 @@ export default function ProfileChat({
   }, [activeProfile]);
 
   useEffect(() => {
-    if (compact || !activeSessionId || !liveBrowserScopeId || !thread.browserRequested) return undefined;
+    if (!activeSessionId || !liveBrowserScopeId || !thread.browserRequested) return undefined;
     let stopped = false;
     let timer = 0;
     const syncLiveBrowser = async () => {
       try {
         setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: current[activeLiveKey] || "searching" }));
         const hint = activeActivity.view?.url || "";
-        const targetId = activeActivity.view?.pageId || activeActivity.view?.targetId || "";
+        const targetId = liveSelection.followAgent ? "" : liveSelection.targetId;
         const payload = await loadLiveScreen(
           activeProfile,
           liveBrowserScopeId,
@@ -734,6 +757,15 @@ export default function ProfileChat({
           liveBrowserScopeId,
           true,
         );
+        if (!stopped && payload?.workspace) {
+          setLiveWorkspaces((current) => ({ ...current, [activeLiveKey]: payload.workspace }));
+          setLiveSelections((current) => {
+            const selection = current[activeLiveKey];
+            if (!selection || selection.followAgent) return current;
+            const exists = payload.workspace.tabs?.some((tab) => tab.targetId === selection.targetId);
+            return exists ? current : { ...current, [activeLiveKey]: { followAgent: true, targetId: "" } };
+          });
+        }
         if (!stopped && payload?.activity?.view?.viewerSocketUrl) {
           setLiveActivities((current) => ({ ...current, [activeLiveKey]: payload.activity }));
           setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: "live" }));
@@ -742,7 +774,7 @@ export default function ProfileChat({
             publishLiveActivity(activeProfile, payload.activity, thread.storedSessionId);
           }
         } else if (!stopped) {
-          setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: "searching" }));
+          setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: payload?.status === "workspace-inactive" ? "waiting" : "searching" }));
         }
       } catch {
         if (!stopped) setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: "reconnecting" }));
@@ -756,16 +788,16 @@ export default function ProfileChat({
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [activeActivity.view?.pageId, activeActivity.view?.targetId, activeActivity.view?.url, activeLiveKey, activeProfile, activeSessionId, compact, liveBrowserScopeId, thread.browserRequested, thread.storedSessionId]);
+  }, [activeActivity.view?.url, activeLiveKey, activeProfile, activeSessionId, liveBrowserScopeId, liveSelection.followAgent, liveSelection.targetId, thread.browserRequested, thread.storedSessionId]);
 
   useEffect(() => {
-    if (compact || !activeSessionId || !liveBrowserScopeId || !thread.browserRequested) return undefined;
+    if (!activeSessionId || !liveBrowserScopeId || !thread.browserRequested) return undefined;
     const profileName = activeProfile;
     const sessionId = liveBrowserScopeId;
     return () => {
       releaseLiveScreen(profileName, sessionId).catch(() => {});
     };
-  }, [activeLiveKey, activeProfile, activeSessionId, compact, liveBrowserScopeId, thread.browserRequested]);
+  }, [activeLiveKey, activeProfile, activeSessionId, liveBrowserScopeId, thread.browserRequested]);
 
   useEffect(() => {
     sessionListsRef.current = sessionLists;
@@ -815,17 +847,36 @@ export default function ProfileChat({
   }, []);
 
   useEffect(() => {
-    if (compact || !activeSessionId || thread.browserRequested) return;
+    if (!activeSessionId || !liveBrowserScopeId || thread.browserRequested) return undefined;
     const restored = readLiveActivity(activeProfile, activeSessionId)
       ?? (thread.storedSessionId ? readLiveActivity(activeProfile, thread.storedSessionId) : null);
-    if (!restored?.view?.pageId && !restored?.view?.targetId) return;
-    setLiveActivities((current) => ({ ...current, [activeLiveKey]: restored }));
-    updateThread(activeProfile, (current) => ({
-      ...current,
-      browserRequested: true,
-      browserSessionId: current.storedSessionId || restored.view.browserSessionId || current.browserSessionId || activeSessionId,
-    }));
-  }, [activeLiveKey, activeProfile, activeSessionId, compact, thread.browserRequested, thread.storedSessionId, updateThread]);
+    if (restored?.view?.pageId || restored?.view?.targetId) {
+      setLiveActivities((current) => ({ ...current, [activeLiveKey]: restored }));
+      updateThread(activeProfile, (current) => ({
+        ...current,
+        browserRequested: true,
+        browserSessionId: restored.view.browserSessionId || current.browserSessionId || current.storedSessionId || activeSessionId,
+      }));
+      return undefined;
+    }
+    if (!thread.storedSessionId) return undefined;
+    let stopped = false;
+    loadLiveScreen(activeProfile, liveBrowserScopeId, "", "", liveBrowserScopeId, true)
+      .then((payload) => {
+        if (stopped || !payload?.activity?.view?.viewerSocketUrl || !payload?.workspace?.tabs?.length) return;
+        setLiveActivities((current) => ({ ...current, [activeLiveKey]: payload.activity }));
+        setLiveWorkspaces((current) => ({ ...current, [activeLiveKey]: payload.workspace }));
+        setLiveConnectionStates((current) => ({ ...current, [activeLiveKey]: "live" }));
+        publishLiveActivity(activeProfile, payload.activity, activeSessionId);
+        updateThread(activeProfile, (current) => ({
+          ...current,
+          browserRequested: true,
+          browserSessionId: payload.workspace.id || current.browserSessionId || current.storedSessionId,
+        }));
+      })
+      .catch(() => {});
+    return () => { stopped = true; };
+  }, [activeLiveKey, activeProfile, activeSessionId, liveBrowserScopeId, thread.browserRequested, thread.storedSessionId, updateThread]);
 
   const resumeStoredSession = useCallback((profileName, storedSessionId) => {
     if (!storedSessionId || gatewayRef.current?.state !== "open") return Promise.resolve(null);
@@ -847,6 +898,7 @@ export default function ProfileChat({
         return {
           ...current,
           liveSessionId: result.session_id,
+          browserSessionId: result.info?.browser_workspace_id || storedSessionId,
           messages: current.messages.length || !resumedMessages.length ? current.messages : resumedMessages,
           running,
           status: running ? "작업 재연결됨" : "이전 대화 연결됨",
@@ -902,6 +954,8 @@ export default function ProfileChat({
       ...current,
       storedSessionId: sessionId,
       liveSessionId: "",
+      browserRequested: false,
+      browserSessionId: sessionId,
       conversationKey: `${profileName}-${sessionId}`,
       status: "이전 대화 연결 중",
       error: "",
@@ -912,6 +966,8 @@ export default function ProfileChat({
         ...current,
         storedSessionId: sessionId,
         liveSessionId: "",
+        browserRequested: false,
+        browserSessionId: sessionId,
         conversationKey: `${profileName}-${sessionId}`,
         messages: normalizeMessages(messages),
         tools: [],
@@ -1407,7 +1463,7 @@ export default function ProfileChat({
           {
             ...current,
             browserRequested: true,
-            browserSessionId: current.storedSessionId || current.browserSessionId || event.session_id || "",
+            browserSessionId: current.browserSessionId || current.storedSessionId || event.session_id || "",
             status: "브라우저 작업 중",
             heartbeat: Date.now(),
           },
@@ -1427,7 +1483,11 @@ export default function ProfileChat({
         ));
       } else if (event.type === "session.info") {
         updateThread(profileName, (current) => appendProgressStep(
-          { ...current, heartbeat: Date.now() },
+          {
+            ...current,
+            browserSessionId: payload.browser_workspace_id || current.browserSessionId,
+            heartbeat: Date.now(),
+          },
           "세션 정보 업데이트",
           payload.version || payload.model || payload.provider || "Hermes 세션 정보가 업데이트되었습니다.",
         ));
@@ -1885,6 +1945,7 @@ export default function ProfileChat({
           <span className="profile-chat-hero" style={{ "--avatar": meta.color }}>{meta.initials}</span>
           <div><small>{meta.role}</small><h3>{meta.name}과 대화</h3></div>
           <span className={`chat-connection ${connection}`}><i /> {connection === "open" ? "실시간 연결" : "연결 확인 중"}</span>
+          {(compact || narrowViewport) && liveViewAvailable && <button type="button" className="chat-live-open-button" onClick={() => setFullscreenLive(true)}>Live</button>}
           {!compact && <button type="button" className="chat-mark-read-button" onClick={markActiveSessionRead}>읽음 처리</button>}
           {!compact && <button type="button" className="chat-reset-button" onClick={() => resetConversation(activeProfile)}>초기화</button>}
         </header>
@@ -1965,11 +2026,16 @@ export default function ProfileChat({
           ].map(([label, text]) => <button key={label} type="button" className="snippet-choice" onClick={() => { insertDraftText(text); setSnippetsOpen(false); }}><strong>{label}</strong><span>{text}</span></button>)}<button type="button" className="secondary dialog-close" onClick={() => setSnippetsOpen(false)}>닫기</button></div></div>}
         </footer>
       </section>
-      {livePanelRequested && !fullscreenLive && (
+      {livePanelRequested && !compact && !fullscreenLive && (
         <aside className="chat-live-panel">
           {liveViewAvailable ? (
             <LiveScreenPanel
               activity={activeActivity}
+              workspace={liveWorkspace}
+              selectedTargetId={selectedLiveTargetId}
+              followAgent={liveSelection.followAgent}
+              onSelectTarget={selectLiveTarget}
+              onFollowAgent={followAgentLiveTarget}
               profileName={activeProfile}
               sessionId={liveBrowserScopeId}
               variant="chat"
@@ -1982,7 +2048,7 @@ export default function ProfileChat({
                 <span>LIVE BROWSER</span>
                 <button type="button" aria-label="Live Screen 닫기" onClick={() => setDismissedLiveSessions((current) => ({ ...current, [activeLiveKey]: true }))}>닫기</button>
               </header>
-              <div><i /><strong>{liveConnectionState === "reconnecting" ? "브라우저에 다시 연결하는 중" : "브라우저 세션을 여는 중"}</strong><small>{meta.name}의 실제 Chrome 탭을 연결하고 있습니다.</small></div>
+              <div><i /><strong>{liveConnectionState === "reconnecting" ? "브라우저에 다시 연결하는 중" : liveConnectionState === "waiting" ? "브라우저 작업 대기" : "브라우저 세션을 여는 중"}</strong><small>{liveConnectionState === "waiting" ? `${meta.name}이 다음 브라우저 작업을 시작하면 자동으로 연결됩니다.` : `${meta.name}의 실제 Chrome 탭을 연결하고 있습니다.`}</small></div>
             </section>
           )}
         </aside>
@@ -1990,6 +2056,11 @@ export default function ProfileChat({
       {fullscreenLive && liveViewAvailable && (
         <LiveScreenModal
           activity={activeActivity}
+          workspace={liveWorkspace}
+          selectedTargetId={selectedLiveTargetId}
+          followAgent={liveSelection.followAgent}
+          onSelectTarget={selectLiveTarget}
+          onFollowAgent={followAgentLiveTarget}
           profileName={activeProfile}
           sessionId={liveBrowserScopeId}
           onClose={() => setFullscreenLive(false)}

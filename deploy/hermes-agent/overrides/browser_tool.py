@@ -78,6 +78,7 @@ _browser_router_override_var = contextvars.ContextVar("browser_router_override",
 _browser_routes_by_session = {}
 _browser_routes_lock = threading.RLock()
 _browser_profile_routes_by_session = {}
+_browser_workspaces_by_session = {}
 
 
 def _browser_route_for_profile(profile: str) -> tuple[str, str]:
@@ -112,6 +113,64 @@ def _browser_session_owner_path(session_key: str) -> Path:
     )
     digest = hashlib.sha256(session_key.encode("utf-8")).hexdigest()
     return root / f"{digest}.json"
+
+
+def _browser_workspace_path(session_key: str) -> Path:
+    root = Path(
+        os.environ.get("HERMES_BROWSER_WORKSPACE_DIR")
+        or "/opt/data/browser-session-workspaces"
+    )
+    digest = hashlib.sha256(session_key.encode("utf-8")).hexdigest()
+    return root / f"{digest}.json"
+
+
+def register_browser_session_workspace(session_key: str, workspace_key: str) -> str:
+    """Make a continuation session reuse its original isolated browser context."""
+    key = str(session_key or "").strip()
+    workspace = str(workspace_key or "").strip()
+    if not key or not workspace:
+        return ""
+    visited = {key}
+    while workspace not in visited:
+        visited.add(workspace)
+        parent = _persisted_browser_workspace(workspace)
+        if not parent:
+            break
+        workspace = parent
+    payload = json.dumps(
+        {"sessionKey": key, "workspaceKey": workspace},
+        ensure_ascii=True,
+        separators=(",", ":"),
+    )
+    path = _browser_workspace_path(key)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(
+            f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+        )
+        temporary.write_text(payload, encoding="utf-8")
+        try:
+            temporary.chmod(0o600)
+        except OSError:
+            pass
+        os.replace(temporary, path)
+    except OSError as exc:
+        logger.warning("Could not persist browser workspace alias %s -> %s: %s", key, workspace, exc)
+        return ""
+    with _browser_routes_lock:
+        _browser_workspaces_by_session[key] = workspace
+    return workspace
+
+
+def _persisted_browser_workspace(session_key: str) -> str:
+    try:
+        payload = json.loads(_browser_workspace_path(session_key).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return ""
+    if not isinstance(payload, dict) or payload.get("sessionKey") != session_key:
+        return ""
+    workspace = str(payload.get("workspaceKey") or "").strip()
+    return workspace if workspace and workspace != session_key else ""
 
 
 def register_browser_session_profile(session_key: str, profile: str) -> tuple[str, str]:
@@ -1353,15 +1412,37 @@ def _url_is_private(url: str) -> bool:
 def _effective_task_id(task_id: Optional[str] = None) -> str:
     """Resolve missing tool task ids to the active durable Hermes session."""
     candidate = str(task_id or "").strip()
-    if candidate:
-        return candidate
-    try:
-        from tools.approval import get_current_session_key
+    if not candidate:
+        try:
+            from tools.approval import get_current_session_key
 
-        candidate = str(get_current_session_key(default="") or "").strip()
-    except Exception:
-        candidate = ""
-    return candidate or "default"
+            candidate = str(get_current_session_key(default="") or "").strip()
+        except Exception:
+            candidate = ""
+    candidate = candidate or "default"
+    sidecar = candidate.endswith(_LOCAL_SUFFIX)
+    base = candidate[:-len(_LOCAL_SUFFIX)] if sidecar else candidate
+    with _browser_routes_lock:
+        workspace = _browser_workspaces_by_session.get(base, "")
+    if not workspace:
+        workspace = _persisted_browser_workspace(base)
+        if workspace:
+            with _browser_routes_lock:
+                _browser_workspaces_by_session[base] = workspace
+    visited = {base}
+    while workspace and workspace not in visited:
+        visited.add(workspace)
+        parent = _persisted_browser_workspace(workspace)
+        if not parent:
+            break
+        workspace = parent
+    resolved = workspace or base
+    return f"{resolved}{_LOCAL_SUFFIX}" if sidecar else resolved
+
+
+def browser_workspace_id(task_id: Optional[str] = None) -> str:
+    """Return the canonical isolated Chrome workspace for a Hermes session."""
+    return _effective_task_id(task_id)
 
 
 def _navigation_session_key(task_id: str, url: str) -> str:
@@ -1990,6 +2071,13 @@ def browser_session_target(task_id: str) -> Dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def browser_session_endpoint(task_id: Optional[str] = None) -> str:
+    """Return the session-routed websocket endpoint shared by every browser tool."""
+    session_key = _effective_task_id(task_id)
+    session_info = _get_session_info(session_key)
+    return str(session_info.get("cdp_url") or _get_cdp_override(session_key) or "")
+
+
 def release_browser_session(task_id: str) -> bool:
     """Close browser processes and dispose the exact durable Chrome context.
 
@@ -1998,9 +2086,10 @@ def release_browser_session(task_id: str) -> bool:
     not call this function: the session router keeps its isolated context and
     can recreate a closed page on the next browser request.
     """
-    session_key = str(task_id or "").strip()
-    if not session_key:
+    requested_key = str(task_id or "").strip()
+    if not requested_key:
         return False
+    session_key = _effective_task_id(requested_key)
     with _cleanup_lock:
         session_info = dict(_active_sessions.get(session_key) or {})
     persisted_route = _persisted_browser_session_route(session_key)
@@ -2027,11 +2116,15 @@ def release_browser_session(task_id: str) -> bool:
 
     try:
         _browser_session_owner_path(session_key).unlink(missing_ok=True)
+        if requested_key and requested_key != session_key:
+            _browser_session_owner_path(requested_key).unlink(missing_ok=True)
+            _browser_workspace_path(requested_key).unlink(missing_ok=True)
     except OSError as exc:
         logger.warning("Could not remove browser owner record for session %s: %s", session_key, exc)
     with _browser_routes_lock:
         _browser_routes_by_session.pop(session_key, None)
         _browser_profile_routes_by_session.pop(session_key, None)
+        _browser_workspaces_by_session.pop(requested_key, None)
     return disposed
 
 

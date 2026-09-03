@@ -687,7 +687,45 @@ function ChromeRelay({ view, title, profileName, sessionId, fixedAspectRatio = 0
   );
 }
 
-export function LiveScreenPanel({ activity, profileName = "", sessionId = "", variant = "panel", onFullscreen, fullscreenLabel = "전체 화면", onClose, headingId }) {
+function LiveScreenTabs({ workspace, selectedTargetId, followAgent = true, onSelectTarget, onFollowAgent }) {
+  const stripRef = useRef(null);
+  const tabs = Array.isArray(workspace?.tabs) ? workspace.tabs : [];
+  const activeTargetId = String(workspace?.activeTargetId || "");
+  useEffect(() => {
+    if (!followAgent || !activeTargetId) return;
+    stripRef.current?.querySelector(`[data-target-id="${CSS.escape(activeTargetId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [activeTargetId, followAgent, tabs.length]);
+  if (tabs.length < 2) return null;
+  const userPinnedAway = !followAgent && selectedTargetId && selectedTargetId !== activeTargetId;
+  return (
+    <div className="live-screen-tabbar">
+      <div ref={stripRef} className="live-screen-tabs" role="tablist" aria-label="이 세션의 브라우저 탭">
+        {tabs.map((tab) => {
+          const selected = String(selectedTargetId || activeTargetId) === tab.targetId;
+          return (
+            <button
+              type="button"
+              role="tab"
+              key={tab.targetId}
+              data-target-id={tab.targetId}
+              className={`${selected ? "selected" : ""} ${tab.targetId === activeTargetId ? "agent-active" : ""}`.trim()}
+              aria-selected={selected}
+              aria-label={`브라우저 탭 ${tab.slot}: ${tab.title || tab.url || "페이지"}`}
+              title={tab.title || tab.url || `탭 ${tab.slot}`}
+              onClick={() => onSelectTarget?.(tab.targetId)}
+            >
+              <span>{tab.slot}</span>
+              {tab.targetId === activeTargetId && <i aria-label="구성원이 사용 중" />}
+            </button>
+          );
+        })}
+      </div>
+      {userPinnedAway && <button type="button" className="live-screen-follow" onClick={onFollowAgent}>구성원 화면으로</button>}
+    </div>
+  );
+}
+
+export function LiveScreenPanel({ activity, workspace = null, selectedTargetId = "", followAgent = true, onSelectTarget, onFollowAgent, profileName = "", sessionId = "", variant = "panel", onFullscreen, fullscreenLabel = "전체 화면", onClose, headingId }) {
   const view = activity?.view;
   const meta = TEAM_META[profileName] ?? TEAM_META.default;
   if (!view?.viewerSocketUrl) {
@@ -724,6 +762,7 @@ export function LiveScreenPanel({ activity, profileName = "", sessionId = "", va
           {onClose && <button type="button" aria-label="Live Screen 닫기" title="닫기" onClick={onClose}><span aria-hidden="true">×</span>닫기</button>}
         </nav>
       </header>
+      <LiveScreenTabs workspace={workspace} selectedTargetId={selectedTargetId} followAgent={followAgent} onSelectTarget={onSelectTarget} onFollowAgent={onFollowAgent} />
       <div className="agent-live-location" title={view.url}>
         <i aria-hidden="true" />
         <span>보안 중계</span>
@@ -750,7 +789,7 @@ export function LiveScreenPanel({ activity, profileName = "", sessionId = "", va
   );
 }
 
-export function LiveScreenModal({ activity, profileName, sessionId, onClose }) {
+export function LiveScreenModal({ activity, workspace, selectedTargetId, followAgent, onSelectTarget, onFollowAgent, profileName, sessionId, onClose }) {
   const modalRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -799,7 +838,7 @@ export function LiveScreenModal({ activity, profileName, sessionId, onClose }) {
   return (
     <div className="live-screen-backdrop" onMouseDown={close}>
       <section ref={setModalRef} className="live-screen-modal" data-native-fullscreen={fullscreen ? "true" : "false"} role="dialog" aria-modal="true" aria-labelledby="live-screen-title" aria-describedby="live-screen-usage" tabIndex={-1} onMouseDown={(event) => event.stopPropagation()}>
-        <LiveScreenPanel activity={activity} profileName={profileName} sessionId={sessionId} variant="modal" headingId="live-screen-title" onFullscreen={toggleFullscreen} fullscreenLabel={fullscreen ? "전체 화면 종료" : "전체 화면"} onClose={close} />
+        <LiveScreenPanel activity={activity} workspace={workspace} selectedTargetId={selectedTargetId} followAgent={followAgent} onSelectTarget={onSelectTarget} onFollowAgent={onFollowAgent} profileName={profileName} sessionId={sessionId} variant="modal" headingId="live-screen-title" onFullscreen={toggleFullscreen} fullscreenLabel={fullscreen ? "전체 화면 종료" : "전체 화면"} onClose={close} />
         <span id="live-screen-usage" className="sr-only">원격 브라우저 화면입니다. 화면을 클릭한 뒤 키보드, 마우스, 터치로 조작할 수 있습니다.</span>
       </section>
     </div>
@@ -811,6 +850,8 @@ export default function AgentLivePage() {
   const profileName = query.get("profile") || "default";
   const sessionId = query.get("sessionId") || "";
   const [activity, setActivity] = useState(() => readLiveActivity(profileName, sessionId));
+  const [workspace, setWorkspace] = useState(null);
+  const [selection, setSelection] = useState({ followAgent: true, targetId: "" });
 
   useEffect(() => {
     if (!profileName || !sessionId) return undefined;
@@ -818,7 +859,8 @@ export default function AgentLivePage() {
     let timer = 0;
     const syncDirectViewer = async () => {
       try {
-        const payload = await loadLiveScreen(profileName, sessionId, "", "", sessionId, true);
+        const payload = await loadLiveScreen(profileName, sessionId, selection.followAgent ? "" : selection.targetId, "", sessionId, true);
+        if (!stopped && payload?.workspace) setWorkspace(payload.workspace);
         if (!stopped && payload?.activity?.view?.viewerSocketUrl) setActivity(payload.activity);
       } catch {
         // Preserve the last good frame while the managed browser session recovers.
@@ -831,7 +873,7 @@ export default function AgentLivePage() {
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [profileName, sessionId]);
+  }, [profileName, selection.followAgent, selection.targetId, sessionId]);
 
   useEffect(() => {
     const channel = new BroadcastChannel(LIVE_CHANNEL);
@@ -850,5 +892,5 @@ export default function AgentLivePage() {
     };
   }, [profileName, sessionId]);
 
-  return <main className="agent-live-page"><LiveScreenPanel activity={activity} profileName={profileName} sessionId={sessionId} variant="page" /></main>;
+  return <main className="agent-live-page"><LiveScreenPanel activity={activity} workspace={workspace} selectedTargetId={selection.followAgent ? (workspace?.activeTargetId || "") : selection.targetId} followAgent={selection.followAgent} onSelectTarget={(targetId) => setSelection({ followAgent: false, targetId })} onFollowAgent={() => setSelection({ followAgent: true, targetId: "" })} profileName={profileName} sessionId={sessionId} variant="page" /></main>;
 }

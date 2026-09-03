@@ -17,11 +17,20 @@ COPY start-persistent-browser.sh /usr/local/bin/start-persistent-browser.sh
 COPY overrides/cdp-http-proxy.js /usr/local/bin/cdp-http-proxy.js
 COPY overrides/browser_tool.py /opt/hermes/tools/browser_tool.py
 COPY overrides/tui_gateway_server.py /opt/hermes/tui_gateway/server.py
+COPY patch-browser-cdp-route.py /tmp/patch-browser-cdp-route.py
+COPY audit-browser-profile-isolation.mjs /usr/local/bin/audit-browser-profile-isolation.mjs
+COPY audit-browser-session-ownership.py /usr/local/bin/audit-browser-session-ownership.py
+
+RUN python3 /tmp/patch-browser-cdp-route.py \
+    && rm /tmp/patch-browser-cdp-route.py \
+    && python3 -m py_compile /opt/hermes/tools/browser_cdp_tool.py
 
 RUN chmod 0755 \
       /usr/local/bin/hermes-office-agent-entrypoint.sh \
       /usr/local/bin/start-persistent-browser.sh \
-      /usr/local/bin/cdp-http-proxy.js
+      /usr/local/bin/cdp-http-proxy.js \
+      /usr/local/bin/audit-browser-profile-isolation.mjs \
+      /usr/local/bin/audit-browser-session-ownership.py
 
 ENTRYPOINT ["/init"]
 CMD ["/usr/local/bin/hermes-office-agent-entrypoint.sh"]

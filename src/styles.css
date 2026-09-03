@@ -1458,6 +1458,101 @@
   }
 }
 
+/* Session-isolated multi-tab Live Browser navigation. */
+.live-screen-tabbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+.live-screen-tabs {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 3px 2px 5px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+  scrollbar-color: #52667e transparent;
+}
+.live-screen-tabs > button {
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #40536a;
+  border-radius: 9px;
+  color: #aebdca;
+  background: #111d2b;
+  font: 700 11px IBM Plex Mono, monospace;
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+.live-screen-tabs > button.selected {
+  border-color: #e0ae55;
+  color: #fff3cf;
+  background: #3a2d1b;
+  box-shadow: inset 0 0 0 1px #e0ae5533;
+}
+.live-screen-tabs > button > i {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4bdda0;
+  box-shadow: 0 0 7px #4bdda099;
+}
+.live-screen-follow {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #4f765f;
+  border-radius: 9px;
+  color: #d9f4e8;
+  background: #14271f;
+  font: 700 9px "Noto Sans KR", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.agent-live-view.modal:has(.live-screen-tabbar),
+.agent-live-view.page:has(.live-screen-tabbar) {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+}
+.chat-live-panel .agent-live-view:has(.live-screen-tabbar),
+.office-chat-live .agent-live-view:has(.live-screen-tabbar) {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+.profile-chat-header .chat-live-open-button {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #9b6f35;
+  border-radius: 8px;
+  color: #f6d896;
+  background: #172437;
+  font: 700 10px IBM Plex Mono, monospace;
+  cursor: pointer;
+}
+@media (max-width: 520px) {
+  .live-screen-tabbar { align-items: stretch; }
+  .live-screen-tabs > button { flex-basis: 44px; width: 44px; min-width: 44px; min-height: 44px; }
+  .live-screen-follow { min-height: 44px; max-width: 122px; white-space: normal; line-height: 1.25; }
+}
+
+
 /* Hermes organization: persistent reporting lines and office-room placement. */
 .team-profile-hero.organization-hero {
   background:

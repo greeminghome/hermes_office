@@ -1919,6 +1919,18 @@ def _sync_session_key_after_compress(
     if not new_session_id or new_session_id == old_key:
         return
 
+    browser_workspace_id = str(session.get("browser_workspace_id") or old_key)
+    try:
+        from tools.browser_tool import register_browser_session_workspace
+
+        register_browser_session_workspace(new_session_id, browser_workspace_id)
+    except Exception:
+        logger.debug(
+            "failed to preserve browser workspace across session continuation",
+            exc_info=True,
+        )
+    session["browser_workspace_id"] = browser_workspace_id
+
     try:
         from tools.approval import (
             disable_session_yolo,
@@ -2137,6 +2149,11 @@ def _session_info(agent, session: dict | None = None) -> dict:
         "update_command": "",
         "usage": _get_usage(agent),
         "profile_name": _current_profile_name(),
+        "browser_workspace_id": str(
+            (session or {}).get("browser_workspace_id")
+            or (session or {}).get("session_key")
+            or ""
+        ),
     }
     try:
         from hermes_cli import __version__, __release_date__
@@ -3047,10 +3064,18 @@ def _make_agent(
 
 def _init_session(sid: str, key: str, agent, history: list, cols: int = 80):
     now = time.time()
+    browser_workspace_id = key
+    try:
+        from tools.browser_tool import browser_workspace_id as resolve_browser_workspace_id
+
+        browser_workspace_id = resolve_browser_workspace_id(key) or key
+    except Exception:
+        logger.debug("failed to resolve browser workspace for resumed session", exc_info=True)
     with _sessions_lock:
         _sessions[sid] = {
             "agent": agent,
             "session_key": key,
+            "browser_workspace_id": browser_workspace_id,
             "history": history,
             "history_lock": threading.Lock(),
             "history_version": 0,
@@ -3508,6 +3533,7 @@ def _(rid, params: dict) -> dict:
             "profile_home": str(profile_home) if profile_home is not None else None,
             "running": False,
             "session_key": key,
+            "browser_workspace_id": key,
             "show_reasoning": _load_show_reasoning(),
             "slash_worker": None,
             "tool_progress_mode": _load_tool_progress_mode(),
@@ -3552,6 +3578,7 @@ def _(rid, params: dict) -> dict:
                 "lazy": True,
                 "desktop_contract": DESKTOP_BACKEND_CONTRACT,
                 "profile_name": _current_profile_name(),
+                "browser_workspace_id": key,
             },
         },
     )
@@ -3893,8 +3920,11 @@ def _find_live_session_by_key(session_key: str) -> tuple[str, dict] | None:
 def _fallback_session_info(session: dict) -> dict:
     agent = session.get("agent")
     if agent is not None:
-        return _session_info(agent)
+        return _session_info(agent, session)
     return {
+        "browser_workspace_id": str(
+            session.get("browser_workspace_id") or session.get("session_key") or ""
+        ),
         "cwd": os.getenv("TERMINAL_CWD", os.getcwd()),
         "lazy": True,
         "model": _resolve_model(),

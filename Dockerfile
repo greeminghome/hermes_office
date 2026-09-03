@@ -30,6 +30,7 @@ COPY agentCalendarAccess.js ./agentCalendarAccess.js
 COPY reservationIntegrations.js ./reservationIntegrations.js
 COPY reservationSync ./reservationSync
 COPY src/profileIds.js ./src/profileIds.js
+COPY deploy/scripts/audit-live-screen-profile-routes.mjs ./deploy/scripts/audit-live-screen-profile-routes.mjs
 RUN mkdir -p /data/chat-files /data/workspace /data/google-drive-assets /data/reservations \
     && chown -R node:node /app /data
 USER node

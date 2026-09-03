@@ -15,6 +15,8 @@ const sessionStateFile = process.env.CDP_PROXY_SESSION_STATE_FILE || `/opt/data/
 const sessionTtlMs = Number(process.env.CDP_PROXY_SESSION_TTL_MS || 24 * 60 * 60 * 1000);
 const sessionContextTtlMs = Number(process.env.CDP_PROXY_SESSION_CONTEXT_TTL_MS || 30 * 24 * 60 * 60 * 1000);
 const cleanupIntervalMs = Number(process.env.CDP_PROXY_CLEANUP_INTERVAL_MS || 5 * 60 * 1000);
+const softTabLimit = Math.max(1, Number(process.env.CDP_PROXY_SOFT_TAB_LIMIT || 10));
+const hardTabLimit = Math.max(softTabLimit, Number(process.env.CDP_PROXY_HARD_TAB_LIMIT || 16));
 const sessionTargets = new Map();
 const webSocketServer = new WebSocketServer({ noServer: true });
 
@@ -27,9 +29,23 @@ function normalizeSessionRecord(value) {
   const targetId = String(value.targetId || "");
   const browserContextId = String(value.browserContextId || "");
   if (!browserContextId) return null;
+  const storedTabs = Array.isArray(value.tabs) ? value.tabs : [];
+  const tabs = storedTabs
+    .map((tab) => ({
+      targetId: String(tab?.targetId || ""),
+      slot: Math.max(1, Number(tab?.slot) || 0),
+      createdAt: Number(tab?.createdAt) || Date.now(),
+      lastUsedAt: Number(tab?.lastUsedAt) || Number(value.lastUsedAt) || Date.now(),
+    }))
+    .filter((tab) => tab.targetId && tab.slot);
+  if (targetId && !tabs.some((tab) => tab.targetId === targetId)) {
+    tabs.push({ targetId, slot: 1, createdAt: Number(value.createdAt) || Date.now(), lastUsedAt: Number(value.lastUsedAt) || Date.now() });
+  }
   return {
     targetId,
     browserContextId,
+    tabs,
+    nextSlot: Math.max(Number(value.nextSlot) || 1, ...tabs.map((tab) => tab.slot + 1), 1),
     lastUsedAt: Number(value.lastUsedAt) || Date.now(),
     createdAt: Number(value.createdAt) || Number(value.lastUsedAt) || Date.now(),
     pageClosedAt: Number(value.pageClosedAt) || 0,
@@ -61,6 +77,8 @@ function assignSessionTarget(sessionId, record) {
     createdAt: Number(record.createdAt) || Number(previous?.createdAt) || Date.now(),
     lastUsedAt: Date.now(),
     pageClosedAt: 0,
+    tabs: Array.isArray(record.tabs) ? record.tabs : (previous?.tabs || []),
+    nextSlot: Math.max(Number(record.nextSlot) || Number(previous?.nextSlot) || 1, 1),
   });
   persistSessionTargets();
 }
@@ -114,7 +132,16 @@ async function createIsolatedSessionTarget(sessionId) {
     const created = await browserCall("Target.createTarget", { url: "about:blank", browserContextId });
     const targetId = String(created.targetId || "");
     if (!targetId) throw new Error("Chrome did not create an isolated page target");
-    const record = { targetId, browserContextId, createdAt: Date.now(), lastUsedAt: Date.now(), pageClosedAt: 0 };
+    const now = Date.now();
+    const record = {
+      targetId,
+      browserContextId,
+      tabs: [{ targetId, slot: 1, createdAt: now, lastUsedAt: now }],
+      nextSlot: 2,
+      createdAt: now,
+      lastUsedAt: now,
+      pageClosedAt: 0,
+    };
     assignSessionTarget(sessionId, record);
     return record;
   } catch (error) {
@@ -123,45 +150,93 @@ async function createIsolatedSessionTarget(sessionId) {
   }
 }
 
-async function ensureSessionTarget(sessionId) {
-  if (!validSessionId(sessionId)) throw new Error("invalid session identifier");
-  const record = sessionTargets.get(sessionId);
-  if (!record) return createIsolatedSessionTarget(sessionId);
-  const [targets, contexts] = await Promise.all([pageTargets(), browserContexts()]);
-  if (!contexts.has(record.browserContextId)) {
-    sessionTargets.delete(sessionId);
-    persistSessionTargets();
-    return createIsolatedSessionTarget(sessionId);
+function assignStableTabs(record, targets) {
+  const now = Date.now();
+  const liveIds = new Set(targets.map((item) => String(item.targetId || "")).filter(Boolean));
+  const existing = new Map((record.tabs || []).filter((tab) => liveIds.has(tab.targetId)).map((tab) => [tab.targetId, tab]));
+  const usedSlots = new Set();
+  for (const tab of [...existing.values()].sort((left, right) => Number(left.slot) - Number(right.slot))) {
+    let slot = Math.max(1, Number(tab.slot) || 1);
+    if (usedSlots.has(slot)) {
+      slot = 1;
+      while (usedSlots.has(slot)) slot += 1;
+      tab.slot = slot;
+    }
+    usedSlots.add(slot);
   }
-  let target = record.targetId
-    ? targets.find((item) => item.targetId === record.targetId && item.browserContextId === record.browserContextId)
-    : null;
-  if (!target) {
-    const created = await browserCall("Target.createTarget", { url: "about:blank", browserContextId: record.browserContextId });
-    record.targetId = String(created.targetId || "");
-    if (!record.targetId) throw new Error("Chrome did not recreate the isolated page target");
-    assignSessionTarget(sessionId, record);
-    const refreshed = await pageTargets();
-    target = refreshed.find((item) => item.targetId === record.targetId && item.browserContextId === record.browserContextId);
-  } else {
-    touchSessionTarget(sessionId, record);
+  for (const target of targets) {
+    const targetId = String(target.targetId || "");
+    if (!targetId || existing.has(targetId)) continue;
+    let slot = 1;
+    while (usedSlots.has(slot)) slot += 1;
+    usedSlots.add(slot);
+    existing.set(targetId, { targetId, slot, createdAt: now, lastUsedAt: now });
   }
-  return { ...(target || { type: "page", url: "about:blank", title: "" }), ...record };
+  record.tabs = [...existing.values()].sort((left, right) => left.slot - right.slot);
+  record.nextSlot = Math.max(1, ...record.tabs.map((tab) => Number(tab.slot) + 1));
+  if (!record.targetId || !liveIds.has(record.targetId)) record.targetId = record.tabs[0]?.targetId || "";
+  return record.tabs.map((tab) => ({
+    ...targets.find((target) => target.targetId === tab.targetId),
+    ...tab,
+    active: tab.targetId === record.targetId,
+  }));
 }
 
-async function existingSessionTarget(sessionId) {
-  if (!validSessionId(sessionId)) return null;
-  const record = sessionTargets.get(sessionId);
+async function sessionWorkspace(sessionId, { createIfMissing = false } = {}) {
+  if (!validSessionId(sessionId)) throw new Error("invalid session identifier");
+  let record = sessionTargets.get(sessionId);
+  if (!record && createIfMissing) record = await createIsolatedSessionTarget(sessionId);
   if (!record) return null;
   const [targets, contexts] = await Promise.all([pageTargets(), browserContexts()]);
   if (!contexts.has(record.browserContextId)) {
     sessionTargets.delete(sessionId);
     persistSessionTargets();
-    return null;
+    return createIfMissing ? sessionWorkspace(sessionId, { createIfMissing: true }) : null;
   }
-  if (!record.targetId) return null;
-  const target = targets.find((item) => item.targetId === record.targetId && item.browserContextId === record.browserContextId) || null;
-  return target ? { ...target, ...record } : null;
+  let ownedTargets = targets.filter((item) => item.browserContextId === record.browserContextId);
+  if (!ownedTargets.length && createIfMissing) {
+    const created = await browserCall("Target.createTarget", { url: "about:blank", browserContextId: record.browserContextId });
+    const refreshed = await pageTargets();
+    ownedTargets = refreshed.filter((item) => item.browserContextId === record.browserContextId);
+    record.targetId = String(created.targetId || "");
+  }
+  const tabs = assignStableTabs(record, ownedTargets);
+  assignSessionTarget(sessionId, record);
+  return { record, tabs };
+}
+
+function workspacePayload(sessionId, workspace, host) {
+  const { record, tabs } = workspace;
+  return {
+    sessionId,
+    targetId: record.targetId,
+    activeTargetId: record.targetId,
+    browserContextId: record.browserContextId,
+    isolation: "browser-context",
+    tabs: tabs.map((tab) => ({
+      targetId: tab.targetId,
+      slot: tab.slot,
+      active: tab.targetId === record.targetId,
+      url: String(tab.url || ""),
+      title: String(tab.title || ""),
+      type: "page",
+    })),
+    policy: { softLimit: softTabLimit, hardLimit: hardTabLimit, overflow: tabs.length > softTabLimit },
+    endpoint: `http://${host || `${listenHost}:${listenPort}`}`,
+  };
+}
+
+async function ensureSessionTarget(sessionId) {
+  const workspace = await sessionWorkspace(sessionId, { createIfMissing: true });
+  const target = workspace.tabs.find((item) => item.targetId === workspace.record.targetId) || workspace.tabs[0];
+  return { ...(target || { type: "page", url: "about:blank", title: "" }), ...workspace.record };
+}
+
+async function existingSessionTarget(sessionId) {
+  const workspace = await sessionWorkspace(sessionId, { createIfMissing: false });
+  if (!workspace?.record?.targetId) return null;
+  const target = workspace.tabs.find((item) => item.targetId === workspace.record.targetId) || null;
+  return target ? { ...target, ...workspace.record } : null;
 }
 
 async function closeSessionPage(sessionId, expectedLastUsedAt = null) {
@@ -169,9 +244,11 @@ async function closeSessionPage(sessionId, expectedLastUsedAt = null) {
   if (!record?.targetId) return false;
   if (expectedLastUsedAt != null && Number(record.lastUsedAt) !== Number(expectedLastUsedAt)) return false;
   const targetId = record.targetId;
-  await browserCall("Target.closeTarget", { targetId }).catch(() => {});
+  const targetIds = (record.tabs || []).map((tab) => tab.targetId).filter(Boolean);
+  await Promise.all(targetIds.map((ownedTargetId) => browserCall("Target.closeTarget", { targetId: ownedTargetId }).catch(() => {})));
   if (sessionTargets.get(sessionId) !== record || record.targetId !== targetId) return false;
   record.targetId = "";
+  record.tabs = [];
   record.pageClosedAt = Date.now();
   sessionTargets.set(sessionId, record);
   persistSessionTargets();
@@ -226,6 +303,18 @@ function sendJson(response, status, payload) {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+  if (url.pathname === "/__session_tabs") {
+    const sessionId = url.searchParams.get("session") || "";
+    if (!validSessionId(sessionId)) return sendJson(response, 400, { error: "valid session is required" });
+    try {
+      const passive = url.searchParams.get("claim") === "0";
+      const workspace = await sessionWorkspace(sessionId, { createIfMissing: !passive });
+      if (!workspace) return sendJson(response, 404, { error: "session workspace is not active", reason: "workspace-inactive" });
+      return sendJson(response, 200, workspacePayload(sessionId, workspace, request.headers.host));
+    } catch (error) {
+      return sendJson(response, 502, { error: error.message });
+    }
+  }
   if (url.pathname === "/__session_target") {
     const sessionId = url.searchParams.get("session") || "";
     if (!validSessionId(sessionId)) return sendJson(response, 400, { error: "valid session is required" });
@@ -279,6 +368,23 @@ async function handleSessionSocket(client, sessionId) {
   const target = await ensureSessionTarget(sessionId);
   const upstream = new WebSocket(await browserWebSocketUrl(), { origin: `http://${targetHost}:${targetPort}` });
   const pendingMethods = new Map();
+  const attachedTargets = new Map();
+  const refreshOwnedTargets = async () => {
+    const workspace = await sessionWorkspace(sessionId, { createIfMissing: true });
+    return {
+      workspace,
+      ids: new Set(workspace.tabs.map((tab) => tab.targetId)),
+    };
+  };
+  const activateTarget = async (targetId) => {
+    const { workspace, ids } = await refreshOwnedTargets();
+    if (!ids.has(targetId)) return false;
+    workspace.record.targetId = targetId;
+    const tab = workspace.record.tabs.find((item) => item.targetId === targetId);
+    if (tab) tab.lastUsedAt = Date.now();
+    assignSessionTarget(sessionId, workspace.record);
+    return true;
+  };
   const forwardClientMessage = (raw) => {
     if (upstream.readyState !== WebSocket.OPEN) {
       queuedMessages.push(raw);
@@ -289,7 +395,21 @@ async function handleSessionSocket(client, sessionId) {
     const activityRecord = sessionTargets.get(sessionId);
     if (activityRecord) touchSessionTarget(sessionId, activityRecord);
     if (message.method === "Target.createTarget") {
-      client.send(JSON.stringify({ id: message.id, result: { targetId: target.targetId } }));
+      refreshOwnedTargets().then(({ workspace }) => {
+        const requestedUrl = String(message.params?.url || "about:blank");
+        const active = workspace.tabs.find((tab) => tab.targetId === workspace.record.targetId);
+        if (requestedUrl === "about:blank" && workspace.tabs.length === 1 && String(active?.url || "") === "about:blank") {
+          client.send(JSON.stringify({ id: message.id, result: { targetId: active.targetId } }));
+          return;
+        }
+        if (workspace.tabs.length >= hardTabLimit) {
+          client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: `Hermes session tab limit (${hardTabLimit}) reached` } }));
+          return;
+        }
+        const routed = { ...message, params: { ...(message.params || {}), browserContextId: workspace.record.browserContextId } };
+        pendingMethods.set(message.id, { method: message.method, requestedUrl });
+        upstream.send(JSON.stringify(routed));
+      }).catch((error) => client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: error.message } })));
       return;
     }
     if (message.method === "Target.createBrowserContext") {
@@ -304,11 +424,42 @@ async function handleSessionSocket(client, sessionId) {
       client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Browser context belongs to another Hermes session" } }));
       return;
     }
-    if (message.method === "Target.attachToTarget" && message.params?.targetId !== target.targetId) {
-      client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target belongs to another Hermes session" } }));
+    if (message.method === "Target.attachToTarget") {
+      refreshOwnedTargets().then(({ ids }) => {
+        if (!ids.has(message.params?.targetId)) {
+          client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target belongs to another Hermes session" } }));
+          return;
+        }
+        pendingMethods.set(message.id, { method: message.method, targetId: message.params.targetId });
+        upstream.send(JSON.stringify(message));
+      }).catch(() => client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target ownership could not be verified" } })));
       return;
     }
-    if (message.id != null) pendingMethods.set(message.id, message.method || "");
+    if (message.method === "Target.activateTarget" && message.params?.targetId) {
+      activateTarget(message.params.targetId).then((allowed) => {
+        if (!allowed) {
+          client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target belongs to another Hermes session" } }));
+          return;
+        }
+        pendingMethods.set(message.id, { method: message.method, targetId: message.params.targetId });
+        upstream.send(JSON.stringify(message));
+      }).catch(() => client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target ownership could not be verified" } })));
+      return;
+    }
+    if (message.params?.targetId) {
+      refreshOwnedTargets().then(({ ids }) => {
+        if (!ids.has(message.params.targetId)) {
+          client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target belongs to another Hermes session" } }));
+          return;
+        }
+        pendingMethods.set(message.id, { method: message.method || "", targetId: message.params.targetId });
+        upstream.send(JSON.stringify(message));
+      }).catch(() => client.send(JSON.stringify({ id: message.id, error: { code: -32000, message: "Target ownership could not be verified" } })));
+      return;
+    }
+    const attachedTargetId = message.sessionId ? attachedTargets.get(message.sessionId) : "";
+    if (attachedTargetId && !["Target.getTargets", "Target.getBrowserContexts"].includes(message.method)) void activateTarget(attachedTargetId);
+    if (message.id != null) pendingMethods.set(message.id, { method: message.method || "", targetId: attachedTargetId || "" });
     upstream.send(JSON.stringify(message));
   };
   client.off("message", queueMessage);
@@ -317,15 +468,31 @@ async function handleSessionSocket(client, sessionId) {
   upstream.on("message", (raw) => {
     let message;
     try { message = JSON.parse(String(raw)); } catch { return; }
-    const method = message.id != null ? pendingMethods.get(message.id) : "";
+    const pending = message.id != null ? pendingMethods.get(message.id) : null;
+    const method = pending?.method || "";
     if (method === "Target.getTargets" && message.result?.targetInfos) {
-      message.result.targetInfos = message.result.targetInfos.filter((item) => item.targetId === target.targetId);
+      message.result.targetInfos = message.result.targetInfos.filter((item) => item.browserContextId === target.browserContextId);
     }
     if (method === "Target.getBrowserContexts" && message.result?.browserContextIds) {
       message.result.browserContextIds = message.result.browserContextIds.filter((item) => item === target.browserContextId);
     }
+    if (method === "Target.createTarget" && message.result?.targetId) void activateTarget(message.result.targetId);
+    if (method === "Target.attachToTarget" && message.result?.sessionId && pending?.targetId) {
+      attachedTargets.set(message.result.sessionId, pending.targetId);
+      void activateTarget(pending.targetId);
+    }
+    if (message.method === "Target.attachedToTarget" && message.params?.sessionId && message.params?.targetInfo?.browserContextId === target.browserContextId) {
+      attachedTargets.set(message.params.sessionId, message.params.targetInfo.targetId);
+      void activateTarget(message.params.targetInfo.targetId);
+    }
+    if (message.method === "Target.detachedFromTarget" && message.params?.sessionId) attachedTargets.delete(message.params.sessionId);
     if (message.id != null) pendingMethods.delete(message.id);
-    if (message.method?.startsWith("Target.") && message.params?.targetInfo?.targetId && message.params.targetInfo.targetId !== target.targetId) return;
+    if (message.method?.startsWith("Target.") && message.params?.targetInfo?.browserContextId && message.params.targetInfo.browserContextId !== target.browserContextId) return;
+    if (message.method === "Target.targetDestroyed" && message.params?.targetId) {
+      const owned = (sessionTargets.get(sessionId)?.tabs || []).some((tab) => tab.targetId === message.params.targetId);
+      if (!owned) return;
+      void refreshOwnedTargets();
+    }
     if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(message));
   });
   upstream.on("close", () => client.close());

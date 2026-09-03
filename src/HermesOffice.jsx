@@ -153,7 +153,7 @@ function MobileOfficeHome({
   );
 }
 
-function AgentConsole({ profileName, profiles, missions, sessions, activity, liveSessionId, roomAssignments, onClose, onStartChat, onOpenLive, onOpenChatDock }) {
+function AgentConsole({ profileName, profiles, missions, sessions, activity, liveWorkspace, liveSelection, onSelectLiveTarget, onFollowLiveTarget, liveSessionId, roomAssignments, onClose, onStartChat, onOpenLive, onOpenChatDock }) {
   const profile = profiles.find((item) => item.name === profileName);
   const meta = resolveProfileMeta(profile ?? profileName);
   const assigned = missions.filter((mission) => mission.owner === profileName);
@@ -205,7 +205,7 @@ function AgentConsole({ profileName, profiles, missions, sessions, activity, liv
             )}
           </div>
         )}
-        {tab === "live" && <LiveScreenPanel activity={activity} profileName={profileName} sessionId={liveSessionId} onFullscreen={onOpenLive} />}
+        {tab === "live" && <LiveScreenPanel activity={activity} workspace={liveWorkspace} selectedTargetId={liveSelection?.targetId || liveWorkspace?.activeTargetId || ""} followAgent={liveSelection?.followAgent !== false} onSelectTarget={onSelectLiveTarget} onFollowAgent={onFollowLiveTarget} profileName={profileName} sessionId={liveSessionId} onFullscreen={onOpenLive} />}
         {tab === "tasks" && (
           <div className="agent-task-list">
             {assigned.length ? assigned.map((mission) => (
@@ -1325,13 +1325,14 @@ export default function HermesOffice({
   const [officePanel, setOfficePanel] = useState(null);
   const [officeLiveActivities, setOfficeLiveActivities] = useState({});
   const [officeLiveSessionIds, setOfficeLiveSessionIds] = useState({});
+  const [officeLiveWorkspaces, setOfficeLiveWorkspaces] = useState({});
+  const [officeLiveSelections, setOfficeLiveSelections] = useState({});
   const [roomFocus, setRoomFocus] = useState(focusedRoom ?? "");
   const activeMissions = missions.filter((mission) => mission.status === "working").length;
   const online = profiles.filter((profile) => profile.gateway_running).length;
   const sessions = useMemo(() => workspace?.sessions ?? [], [workspace?.sessions]);
   const observedLiveProfile = officeChatAgent || fullscreenLiveAgent || selectedAgent;
   const observedBaseActivity = observedLiveProfile ? agentActivities[observedLiveProfile] : null;
-  const observedViewPageId = observedBaseActivity?.view?.pageId || observedBaseActivity?.view?.targetId || "";
   const observedViewUrl = observedBaseActivity?.view?.url || "";
   const observedViewBrowserSessionId = observedBaseActivity?.view?.browserSessionId || "";
   const observedDurableSessionId = sessions.find((session) => session.profile === observedLiveProfile)?.id
@@ -1342,10 +1343,11 @@ export default function HermesOffice({
     || "";
   // Prefer the persisted conversation id. Browser tools use it as their
   // isolation key, while view.sessionId can be only the current WS transport.
-  const observedLiveScopeId = observedDurableSessionId
-    || observedViewBrowserSessionId
+  const observedLiveScopeId = observedViewBrowserSessionId
+    || observedDurableSessionId
     || observedBaseActivity?.view?.sessionId
     || "";
+  const observedLiveSelection = officeLiveSelections[observedLiveProfile] ?? { followAgent: true, targetId: "" };
 
   useEffect(() => {
     if (!observedLiveProfile || observedLiveSessionId) return undefined;
@@ -1370,12 +1372,20 @@ export default function HermesOffice({
         const payload = await loadLiveScreen(
           observedLiveProfile,
           observedLiveScopeId,
-          observedViewPageId,
+          observedLiveSelection.followAgent ? "" : observedLiveSelection.targetId,
           observedViewUrl,
           observedLiveScopeId,
           true,
         );
         if (!stopped) {
+          if (payload?.workspace) {
+            setOfficeLiveWorkspaces((current) => ({ ...current, [observedLiveProfile]: payload.workspace }));
+            setOfficeLiveSelections((current) => {
+              const selection = current[observedLiveProfile];
+              if (!selection || selection.followAgent || payload.workspace.tabs?.some((tab) => tab.targetId === selection.targetId)) return current;
+              return { ...current, [observedLiveProfile]: { followAgent: true, targetId: "" } };
+            });
+          }
           setOfficeLiveActivities((current) => ({
             ...current,
             [observedLiveProfile]: payload?.activity?.view?.viewerSocketUrl ? payload.activity : null,
@@ -1394,7 +1404,16 @@ export default function HermesOffice({
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [observedLiveProfile, observedLiveScopeId, observedViewPageId, observedViewUrl]);
+  }, [observedLiveProfile, observedLiveScopeId, observedLiveSelection.followAgent, observedLiveSelection.targetId, observedViewUrl]);
+
+  const selectOfficeLiveTarget = useCallback((profileName, targetId) => {
+    if (!profileName || !targetId) return;
+    setOfficeLiveSelections((current) => ({ ...current, [profileName]: { followAgent: false, targetId } }));
+  }, []);
+  const followOfficeLiveTarget = useCallback((profileName) => {
+    if (!profileName) return;
+    setOfficeLiveSelections((current) => ({ ...current, [profileName]: { followAgent: true, targetId: "" } }));
+  }, []);
 
   const resolvedAgentActivities = useMemo(() => {
     const next = { ...agentActivities };
@@ -1565,6 +1584,10 @@ export default function HermesOffice({
           missions={missions}
           sessions={workspace?.sessions ?? []}
           activity={resolvedAgentActivities[selectedAgent]}
+          liveWorkspace={officeLiveWorkspaces[selectedAgent]}
+          liveSelection={officeLiveSelections[selectedAgent]}
+          onSelectLiveTarget={(targetId) => selectOfficeLiveTarget(selectedAgent, targetId)}
+          onFollowLiveTarget={() => followOfficeLiveTarget(selectedAgent)}
           liveSessionId={liveSessionForProfile(selectedAgent)}
           roomAssignments={roomAssignments}
           onClose={() => setSelectedAgent("")}
@@ -1577,6 +1600,11 @@ export default function HermesOffice({
         <LiveScreenModal
           profileName={fullscreenLiveAgent}
           activity={resolvedAgentActivities[fullscreenLiveAgent]}
+          workspace={officeLiveWorkspaces[fullscreenLiveAgent]}
+          selectedTargetId={officeLiveSelections[fullscreenLiveAgent]?.targetId || officeLiveWorkspaces[fullscreenLiveAgent]?.activeTargetId || ""}
+          followAgent={officeLiveSelections[fullscreenLiveAgent]?.followAgent !== false}
+          onSelectTarget={(targetId) => selectOfficeLiveTarget(fullscreenLiveAgent, targetId)}
+          onFollowAgent={() => followOfficeLiveTarget(fullscreenLiveAgent)}
           sessionId={liveSessionForProfile(fullscreenLiveAgent)}
           onClose={() => setFullscreenLiveAgent("")}
         />
@@ -1619,6 +1647,11 @@ export default function HermesOffice({
             <div className="office-chat-live">
               <LiveScreenPanel
                 activity={resolvedAgentActivities[officeChatAgent]}
+                workspace={officeLiveWorkspaces[officeChatAgent]}
+                selectedTargetId={officeLiveSelections[officeChatAgent]?.targetId || officeLiveWorkspaces[officeChatAgent]?.activeTargetId || ""}
+                followAgent={officeLiveSelections[officeChatAgent]?.followAgent !== false}
+                onSelectTarget={(targetId) => selectOfficeLiveTarget(officeChatAgent, targetId)}
+                onFollowAgent={() => followOfficeLiveTarget(officeChatAgent)}
                 profileName={officeChatAgent}
                 sessionId={liveSessionForProfile(officeChatAgent)}
                 variant="dock"

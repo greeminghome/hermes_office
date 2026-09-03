@@ -501,25 +501,56 @@ async function readExactLiveView(profile, targetId, profileMap, defaults) {
   return { endpoint: "", activity: null, errors };
 }
 
-async function readSessionLiveView(profile, browserSessionId, profileMap, defaults, passive = false) {
-  if (!browserSessionId) return { endpoint: "", activity: null, errors: [] };
+function liveWorkspacePayload(payload, pages) {
+  const pageById = new Map(pages.map((page) => [page.id, page]));
+  const tabs = (Array.isArray(payload?.tabs) ? payload.tabs : [])
+    .map((tab) => {
+      const page = pageById.get(String(tab?.targetId || ""));
+      if (!page || !visibleCdpPage(page)) return null;
+      return {
+        targetId: page.id,
+        slot: Math.max(1, Number(tab.slot) || 1),
+        active: page.id === payload.activeTargetId,
+        title: String(page.title || "Chrome").slice(0, 240),
+        url: sanitizeLiveViewUrl(page.url),
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.slot - right.slot);
+  return {
+    id: String(payload?.sessionId || ""),
+    activeTargetId: String(payload?.activeTargetId || payload?.targetId || ""),
+    tabs,
+    policy: {
+      softLimit: Math.max(1, Number(payload?.policy?.softLimit) || 10),
+      hardLimit: Math.max(1, Number(payload?.policy?.hardLimit) || 16),
+      overflow: Boolean(payload?.policy?.overflow),
+    },
+  };
+}
+
+async function readSessionLiveView(profile, browserSessionId, targetId, profileMap, defaults, passive = false) {
+  if (!browserSessionId) return { endpoint: "", activity: null, workspace: null, errors: [] };
   const candidates = liveScreenEndpointCandidates(profile, profileMap, defaults);
   const errors = [];
   for (const endpoint of candidates) {
     try {
       const query = new URLSearchParams({ session: browserSessionId });
       if (passive) query.set("claim", "0");
-      const target = await fetchJsonWithTimeout(`${normalizeLiveScreenCdpUrl(endpoint)}/__session_target?${query}`, 3000);
-      const targetId = String(target?.targetId || "");
-      if (!targetId) continue;
+      const routedWorkspace = await fetchJsonWithTimeout(`${normalizeLiveScreenCdpUrl(endpoint)}/__session_tabs?${query}`, 3000);
       const tabs = await fetchJsonWithTimeout(`${normalizeLiveScreenCdpUrl(endpoint)}/json/list`, 3000);
-      const page = (Array.isArray(tabs) ? tabs : []).find((tab) => visibleCdpPage(tab) && tab.id === targetId);
-      if (page) return { endpoint, activity: livePageActivity(page), errors };
+      const pages = Array.isArray(tabs) ? tabs : [];
+      const workspace = liveWorkspacePayload(routedWorkspace, pages);
+      const allowedTargetIds = new Set(workspace.tabs.map((tab) => tab.targetId));
+      const selectedTargetId = allowedTargetIds.has(targetId) ? targetId : workspace.activeTargetId;
+      const page = pages.find((tab) => visibleCdpPage(tab) && tab.id === selectedTargetId);
+      if (page) return { endpoint, activity: livePageActivity(page), workspace, errors };
+      return { endpoint: "", activity: null, workspace, errors };
     } catch (error) {
       errors.push(`${endpoint}: ${error.message}`);
     }
   }
-  return { endpoint: "", activity: null, errors };
+  return { endpoint: "", activity: null, workspace: null, errors };
 }
 
 async function touchSessionLiveView(endpoint, browserSessionId) {
@@ -602,8 +633,8 @@ async function handleLiveScreenBridge(request, response, url) {
 
   const sessionScoped = Boolean(sessionId);
   const routed = browserSessionId
-    ? await readSessionLiveView(profile, browserSessionId, profileMap, defaults, passive)
-    : { endpoint: "", activity: null, errors: sessionScoped ? ["browser session is required"] : [] };
+    ? await readSessionLiveView(profile, browserSessionId, targetId, profileMap, defaults, passive)
+    : { endpoint: "", activity: null, workspace: null, errors: sessionScoped ? ["browser session is required"] : [] };
   let current = routed;
   let errors = [...routed.errors];
   if (!sessionScoped && !routed.activity) {
@@ -613,10 +644,16 @@ async function handleLiveScreenBridge(request, response, url) {
   }
   const { endpoint, activity: exactActivity } = current;
   if (!exactActivity?.view?.pageId) {
-    sendJson(response, 200, { activity: null, unavailable: errors.length > 0, updatedAt: Date.now() });
+    sendJson(response, 200, {
+      activity: null,
+      workspace: current.workspace || null,
+      status: current.workspace ? "waiting-for-page" : "workspace-inactive",
+      unavailable: errors.length > 0,
+      updatedAt: Date.now(),
+    });
     return;
   }
-  const discovery = { endpoint, activity: exactActivity, profile, sessionId };
+  const discovery = { endpoint, activity: exactActivity, workspace: current.workspace || null, profile, sessionId };
   liveScreenCache.set(cacheKey, { expiresAt: Date.now() + liveScreenCacheTtlMs, discovery });
   sendJson(response, 200, issueLiveScreenViewer(discovery, request, url));
 }
@@ -641,6 +678,7 @@ function issueLiveScreenViewer(discovery, request, requestUrl) {
         sessionId: discovery.sessionId,
       },
     },
+    workspace: discovery.workspace || null,
     updatedAt: Date.now(),
   };
 }
