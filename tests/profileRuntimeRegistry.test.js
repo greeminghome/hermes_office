@@ -48,6 +48,13 @@ test("agent supervisor discovers profiles and publishes only the internal regist
   assert.match(entrypoint, /managed_profile_rows/);
   assert.match(entrypoint, /HERMES_PROFILE_DISCOVERY_ROOT/);
   assert.match(entrypoint, /start_profile_registry/);
+  assert.match(entrypoint, /runtime_pid_dir="\/opt\/data\/run\/profile-supervisor"/);
+  assert.match(entrypoint, /process_file_matches/);
+  assert.match(entrypoint, /expected_start/);
+  assert.match(entrypoint, /remember_matching_process/);
+  assert.match(entrypoint, /HERMES_SUPERVISOR_INTERVAL_SECONDS:-60/);
+  assert.doesNotMatch(entrypoint, /while sleep 10/);
+  assert.doesNotMatch(entrypoint, /if ! curl -fsS "http:\/\/127\.0\.0\.1:\$\{cdp_port\}/);
   assert.match(dockerfile, /profile-runtime-registry\.cjs/);
   assert.match(registry, /127\.0\.0\.1|0\.0\.0\.0/);
   assert.doesNotMatch(registry, /Access-Control-Allow-Origin/);
